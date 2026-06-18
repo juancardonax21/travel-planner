@@ -113,7 +113,7 @@ export default function TripsPage() {
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-violet-700 flex items-center justify-center">
       <div className="text-center text-white">
-        <div className="text-6xl mb-4 animate-bounce">✈️</div>
+        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center overflow-hidden p-1"><img src="/favicon.svg" alt="" className="w-full h-full object-contain" /></div>
         <p className="text-blue-200 text-lg">Cargando viajes...</p>
       </div>
     </div>
@@ -129,7 +129,7 @@ export default function TripsPage() {
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center text-xl">✈️</div>
+              <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center overflow-hidden p-1"><img src="/favicon.svg" alt="" className="w-full h-full object-contain" /></div>
               <div>
                 <h1 className="text-xl font-bold">Travel Planner</h1>
                 <p className="text-blue-300 text-xs">{user?.email}</p>
