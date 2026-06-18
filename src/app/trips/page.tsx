@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Trip } from '@/types'
 import { formatDate, daysUntil } from '@/lib/utils'
 import Link from 'next/link'
-import { Users } from 'lucide-react'
+import { Users, Map, Calendar, CheckCircle2 } from 'lucide-react'
 
 const GRADIENTS = [
   'from-blue-600 to-violet-600',
@@ -39,7 +39,7 @@ function TripCard({ trip, index }: { trip: Trip; index: number }) {
 
   return (
     <Link href={`/trips/${trip.id}/itinerary`} className="block group">
-      <div className={`relative overflow-hidden rounded-3xl transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-2xl shadow-lg ${isPast ? 'opacity-70' : ''}`}>
+      <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl transition-all duration-300 sm:group-hover:scale-[1.02] group-hover:shadow-2xl shadow-lg ${isPast ? 'opacity-70' : ''}`}>
         {/* Background gradient */}
         <div className={`bg-gradient-to-br ${gradient} p-6 pb-4 min-h-[180px] flex flex-col justify-between`}>
           {/* Top row */}
@@ -48,7 +48,7 @@ function TripCard({ trip, index }: { trip: Trip; index: number }) {
               <p className="text-white/60 text-xs uppercase tracking-widest font-mono mb-1">
                 {trip.destination}
               </p>
-              <h3 className="text-white font-bold text-xl leading-tight">{trip.name}</h3>
+              <h3 className="text-white font-bold text-base sm:text-xl leading-tight">{trip.name}</h3>
             </div>
             <div className="text-5xl opacity-80">{emoji}</div>
           </div>
@@ -142,14 +142,14 @@ export default function TripsPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-3 mb-2">
-            {[
-              { n: trips.length, l: 'Total viajes', emoji: '🗺️' },
-              { n: upcoming.length, l: 'Próximos', emoji: '📅' },
-              { n: past.length, l: 'Completados', emoji: '✓' },
-            ].map(s => (
-              <div key={s.l} className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 text-center">
-                <div className="text-2xl mb-1">{s.emoji}</div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-2">
+            {([
+              { n: trips.length, l: 'Total', Icon: Map },
+              { n: upcoming.length, l: 'Próximos', Icon: Calendar },
+              { n: past.length, l: 'Completados', Icon: CheckCircle2 },
+            ] as {n:number;l:string;Icon:any}[]).map(s => (
+              <div key={s.l} className="bg-white/10 backdrop-blur-sm rounded-2xl p-3 sm:p-4 text-center">
+                <s.Icon size={18} strokeWidth={1.5} className="mx-auto mb-1 text-blue-200" />
                 <div className="text-2xl font-bold">{s.n}</div>
                 <div className="text-blue-300 text-xs">{s.l}</div>
               </div>
@@ -158,9 +158,9 @@ export default function TripsPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="max-w-5xl mx-auto px-4 py-6 overflow-hidden">
         {/* Actions */}
-        <div className="flex gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <Link href="/trips/new"
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-2xl text-center transition-colors shadow-md shadow-blue-200 flex items-center justify-center gap-2">
             ＋ Nuevo viaje
@@ -183,7 +183,7 @@ export default function TripsPage() {
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">
                   Próximos viajes
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   {upcoming.map((t, i) => <TripCard key={t.id} trip={t} index={i} />)}
                 </div>
               </div>
@@ -193,7 +193,7 @@ export default function TripsPage() {
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">
                   Viajes completados
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   {past.map((t, i) => <TripCard key={t.id} trip={t} index={i + upcoming.length} />)}
                 </div>
               </div>
