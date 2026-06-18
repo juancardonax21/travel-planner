@@ -66,16 +66,17 @@ function TripCard({ trip, index }: { trip: Trip; index: number }) {
               {formatDate(trip.start_date, 'd MMM')} — {formatDate(trip.end_date, 'd MMM yyyy')}
             </p>
 
-            <div className="flex items-center justify-between mt-3">
-              <div className="text-white/70 text-xs">
-                {isPast ? '✓ Completado' : isActive ? 'En marcha' : ''}
-              </div>
-              {!isPast && dL !== null && dL > 0 && (
-                <div className="text-right">
-                  <span className="text-3xl font-black text-white leading-none font-mono drop-shadow">{dL}</span>
-                  <span className="text-white/60 text-xs ml-1">días</span>
-                </div>
-              )}
+            <div className="mt-2">
+              {isPast
+                ? <span className="text-white/60 text-xs">✓ Completado</span>
+                : isActive
+                  ? <span className="text-white/80 text-sm font-medium">En marcha</span>
+                  : dL !== null && dL > 0 && (
+                    <p className="text-white/90 text-sm font-semibold drop-shadow">
+                      En <span className="text-white font-black text-lg">{dL}</span> días
+                    </p>
+                  )
+              }
             </div>
           </div>
           </div>
@@ -106,7 +107,7 @@ export default function TripsPage() {
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-violet-700 flex items-center justify-center">
       <div className="text-center text-white">
-        <div className="text-6xl mb-4 animate-bounce">✈️</div>
+        <div className="w-10 h-10 bg-white/20 rounded-2xl overflow-hidden p-1 flex-shrink-0"><img src="/favicon.svg" alt="" className="w-full h-full object-contain" /></div>
         <p className="text-blue-200 text-lg">Cargando viajes...</p>
       </div>
     </div>
