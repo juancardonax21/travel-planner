@@ -37,7 +37,7 @@ function getEventTimes(ev: Event): { startMins: number; endMins: number } {
 
   if (ev.category === 'hotel') {
     // Show at check-in time
-    const startMins = timeToMins(ev.time)
+    const startMins = timeToMins(e.accom_checkin_time || ev.time)
     return { startMins, endMins: startMins + 30 } // 30min block
   }
 
@@ -198,6 +198,36 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
                           {height > 36 && displayTime && (
                             <p className="text-xs opacity-50 leading-none mt-0.5">{displayTime}{isOvernight ? ' →+1' : ''}</p>
                           )}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+                {/* Auto checkout blocks */}
+                {events.filter(ev => {
+                  const ea = ev as any
+                  return ev.category === 'hotel' &&
+                    ea.accom_checkout_date &&
+                    String(ea.accom_checkout_date).slice(0,10) === day
+                }).map(ev => {
+                  const e = ev as any
+                  const cfg = CAT_CONFIG['hotel' as keyof typeof CAT_CONFIG]
+                  const checkoutTime = e.accom_checkout_time?.slice(0,5) || '12:00'
+                  const startMins = timeToMins(checkoutTime)
+                  const clampedStart = Math.max(startMins, GRID_START * 60)
+                  if (clampedStart >= GRID_END * 60) return null
+                  const top = minsToY(clampedStart)
+                  const height = Math.max(minsToY(clampedStart + 30) - top, 24)
+                  return (
+                    <button key={ev.id + '-checkout'}
+                      onClick={evt => { evt.stopPropagation(); onDayClick(day) }}
+                      style={{ top, height, background: '#D1FAE5', color: '#065F46', borderColor: '#6EE7B7' }}
+                      className="absolute left-1 right-1 z-10 rounded-xl border px-1.5 py-1 text-left overflow-hidden hover:brightness-95 transition-all shadow-sm">
+                      <div className="flex items-start gap-1 h-full overflow-hidden">
+                        <BedDouble size={10} strokeWidth={2} className="flex-shrink-0 mt-0.5 opacity-70" />
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <p className="text-xs font-medium leading-tight truncate">Check-out</p>
+                          {height > 36 && <p className="text-xs opacity-50 leading-none mt-0.5">hasta {checkoutTime}</p>}
                         </div>
                       </div>
                     </button>
