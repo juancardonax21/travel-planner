@@ -123,7 +123,7 @@ export default function TripsPage() {
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center text-xl">✈️</div>
+              <div className="w-10 h-10 bg-white/20 rounded-2xl overflow-hidden p-1 flex-shrink-0"><img src="/favicon.svg" alt="" className="w-full h-full object-contain" /></div>
               <div>
                 <h1 className="text-xl font-bold">Travel Planner</h1>
                 <p className="text-blue-300 text-xs">{user?.email}</p>
