@@ -119,30 +119,30 @@ export default function TripsPage() {
   return (
     <div className="min-h-screen bg-slate-50 overflow-x-hidden w-full">
       {/* Hero header */}
-      <div className="bg-gradient-to-br from-blue-900 via-blue-700 to-violet-700 text-white overflow-hidden">
+      <div className="bg-gradient-to-br from-blue-900 via-blue-700 to-violet-700 text-white overflow-hidden w-full">
         <div className="max-w-5xl mx-auto px-4 py-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4 gap-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-2xl overflow-hidden p-1 flex-shrink-0"><img src="/favicon.svg" alt="" className="w-full h-full object-contain" /></div>
               <div>
-                <h1 className="text-xl font-bold">Travel Planner</h1>
-                <p className="text-blue-300 text-xs">{user?.email}</p>
+                <h1 className="text-base sm:text-xl font-bold">Travel Planner</h1>
+                <p className="text-blue-300 text-xs truncate max-w-[160px] sm:max-w-none">{user?.email}</p>
               </div>
             </div>
             <button onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
-              className="text-blue-300 hover:text-white text-sm transition-colors">
+              className="text-blue-300 hover:text-white text-xs sm:text-sm transition-colors whitespace-nowrap">
               Salir
             </button>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-2">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-3 mb-2 w-full">
             {([
               { n: trips.length, l: 'Total', Icon: Map },
               { n: upcoming.length, l: 'Próximos', Icon: Calendar },
               { n: past.length, l: 'Completados', Icon: CheckCircle2 },
             ] as {n:number;l:string;Icon:any}[]).map(s => (
-              <div key={s.l} className="bg-white/10 backdrop-blur-sm rounded-2xl p-3 sm:p-4 text-center">
+              <div key={s.l} className="bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-2 sm:p-4 text-center min-w-0">
                 <s.Icon size={18} strokeWidth={1.5} className="mx-auto mb-1 text-blue-200" />
                 <div className="text-2xl font-bold">{s.n}</div>
                 <div className="text-blue-300 text-xs">{s.l}</div>
@@ -152,7 +152,7 @@ export default function TripsPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-6 overflow-hidden">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 w-full">
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <Link href="/trips/new"
