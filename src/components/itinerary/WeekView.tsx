@@ -14,7 +14,7 @@ const GRID_END = 23
 const TIME_COL_W = 44
 const DAY_COL_W = 140
 
-function timeToMins(t: string): number {
+function timeToMins(t: string | null | undefined): number {
   if (!t) return 0
   const [h, m] = t.slice(0, 5).split(':').map(Number)
   return (h || 0) * 60 + (m || 0)
@@ -31,21 +31,45 @@ type Props = {
   onDayClick: (day: string) => void
 }
 
+// Resolve start/end minutes for any event type
+function getEventTimes(ev: Event): { startMins: number; endMins: number } {
+  const e = ev as any
+
+  if (ev.category === 'hotel') {
+    // Show at check-in time
+    const startMins = timeToMins(ev.time)
+    return { startMins, endMins: startMins + 30 } // 30min block
+  }
+
+  if (ev.category === 'flight') {
+    // Use dep_time → arr_time (last segment)
+    const segs = e.flight_segments
+    const depTime = segs?.[0]?.dep_time || e.dep_time || ev.time
+    const lastSeg = segs?.[segs.length - 1]
+    const arrTime = lastSeg?.arr_time || e.arr_time || null
+    const startMins = timeToMins(depTime)
+    const endMins = arrTime ? timeToMins(arrTime) : startMins + 60
+    // Handle overnight — if arr < dep, add 24h
+    return {
+      startMins,
+      endMins: endMins <= startMins ? endMins + 24 * 60 : endMins
+    }
+  }
+
+  // Generic event
+  const startMins = timeToMins(ev.time)
+  const endMins = e.end_time ? timeToMins(e.end_time) : startMins + 60
+  return { startMins, endMins: endMins <= startMins ? startMins + 60 : endMins }
+}
+
 export default function WeekView({ trip, events, days, onDayClick }: Props) {
   const totalH = (GRID_END - GRID_START) * SLOT_H
   const hours = Array.from({ length: GRID_END - GRID_START }, (_, i) => GRID_START + i)
+
+  // Multi-day accommodation bars (presence strip)
   const multiDay = events.filter(e =>
     e.category === 'hotel' && (e as any).accom_checkin_date && (e as any).accom_checkout_date
   )
-
-  function getEventStyle(ev: Event) {
-    const cfg = CAT_CONFIG[ev.category as keyof typeof CAT_CONFIG] || CAT_CONFIG.other
-    const startMins = timeToMins(ev.time)
-    const endMins = (ev as any).end_time ? timeToMins((ev as any).end_time) : startMins + 60
-    const top = minsToY(Math.max(startMins, GRID_START * 60))
-    const height = Math.max(minsToY(endMins) - minsToY(startMins), 26)
-    return { top, height, bg: cfg.bg, color: cfg.color }
-  }
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -76,7 +100,7 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
           })}
         </div>
 
-        {/* Multi-day bar */}
+        {/* Multi-day presence bar */}
         {multiDay.length > 0 && (
           <div className="flex border-b border-slate-100 bg-slate-50/50">
             <div style={{ width: TIME_COL_W }} className="flex-shrink-0 flex items-center justify-center py-1">
@@ -115,15 +139,16 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
             {hours.map(h => (
               <div key={h} style={{ top: (h - GRID_START) * SLOT_H }}
                 className="absolute right-2 text-xs text-slate-300 font-mono -translate-y-2">
-                {String(h).padStart(2,'0')}
+                {String(h).padStart(2, '0')}
               </div>
             ))}
           </div>
 
           {/* Day columns */}
           {days.map(day => {
+            // Show ALL events including hotels (as check-in blocks)
             const dayEvents = events
-              .filter(e => e.day === day && e.category !== 'hotel')
+              .filter(e => e.day === day)
               .sort((a, b) => a.time.localeCompare(b.time))
 
             return (
@@ -141,24 +166,41 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
                 {/* Background click */}
                 <button className="absolute inset-0 w-full z-0 hover:bg-blue-50/20 transition-colors"
                   onClick={() => onDayClick(day)} />
+
                 {/* Events */}
                 {dayEvents.map(ev => {
-                  const { top, height, bg, color } = getEventStyle(ev)
+                  const cfg = CAT_CONFIG[ev.category as keyof typeof CAT_CONFIG] || CAT_CONFIG.other
                   const Icon = CAT_ICONS[ev.category] || Tag
+                  const { startMins, endMins } = getEventTimes(ev)
+
+                  // Clamp to grid
+                  const clampedStart = Math.max(startMins, GRID_START * 60)
+                  const clampedEnd = Math.min(endMins, GRID_END * 60)
+                  if (clampedStart >= GRID_END * 60) return null
+
+                  const top = minsToY(clampedStart)
+                  const height = Math.max(minsToY(clampedEnd) - minsToY(clampedStart), 24)
+
+                  const e = ev as any
+                  const displayTime = ev.category === 'hotel'
+                    ? (e.accom_checkin_time?.slice(0, 5) || ev.time?.slice(0, 5))
+                    : ev.category === 'flight'
+                      ? (e.flight_segments?.[0]?.dep_time?.slice(0, 5) || ev.time?.slice(0, 5))
+                      : ev.time?.slice(0, 5)
+
                   return (
                     <button key={ev.id}
-                      onClick={e => { e.stopPropagation(); onDayClick(ev.day) }}
-                      style={{ top, height, background: bg, color, borderColor: color + '33' }}
+                      onClick={evt => { evt.stopPropagation(); onDayClick(ev.day) }}
+                      style={{ top, height, background: cfg.bg, color: cfg.color, borderColor: cfg.color + '33' }}
                       className="absolute left-1 right-1 z-10 rounded-xl border px-1.5 py-1 text-left overflow-hidden hover:brightness-95 transition-all shadow-sm">
-                      <div className="flex items-start gap-1 h-full">
+                      <div className="flex items-start gap-1 h-full overflow-hidden">
                         <Icon size={10} strokeWidth={2} className="flex-shrink-0 mt-0.5 opacity-70" />
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 overflow-hidden">
                           <p className="text-xs font-medium leading-tight truncate">
-                            {height <= 36 && <span className="opacity-60">{ev.time?.slice(0,5)} </span>}
                             {ev.title}
                           </p>
-                          {height > 46 && ev.time && (
-                            <p className="text-xs opacity-50 leading-none mt-0.5">{ev.time.slice(0,5)}</p>
+                          {height > 36 && displayTime && (
+                            <p className="text-xs opacity-50 leading-none mt-0.5">{displayTime}</p>
                           )}
                         </div>
                       </div>
