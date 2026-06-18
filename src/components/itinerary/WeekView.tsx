@@ -37,23 +37,31 @@ function getEventTimes(ev: Event): { startMins: number; endMins: number } {
 
   if (ev.category === 'hotel') {
     // Show at check-in time
-    const startMins = timeToMins(ev.time)
+    const startMins = timeToMins(e.accom_checkin_time || ev.time)
     return { startMins, endMins: startMins + 30 } // 30min block
   }
 
   if (ev.category === 'flight') {
-    // Use dep_time → arr_time (last segment)
     const segs = e.flight_segments
     const depTime = segs?.[0]?.dep_time || e.dep_time || ev.time
     const lastSeg = segs?.[segs.length - 1]
     const arrTime = lastSeg?.arr_time || e.arr_time || null
     const startMins = timeToMins(depTime)
-    const endMins = arrTime ? timeToMins(arrTime) : startMins + 60
-    // Handle overnight — if arr < dep, add 24h
-    return {
-      startMins,
-      endMins: endMins <= startMins ? endMins + 24 * 60 : endMins
+    let endMins = arrTime ? timeToMins(arrTime) : startMins + 60
+
+    // Use arr_date to calculate extra days
+    const arrDate = lastSeg?.arr_date || null
+    const evDay = ev.day || ''
+    if (arrDate && evDay && arrDate !== evDay) {
+      const diff = Math.round(
+        (new Date(arrDate).getTime() - new Date(evDay).getTime()) / 86400000
+      )
+      endMins += diff * 24 * 60
+    } else if (endMins <= startMins) {
+      // Fallback: same-date overnight
+      endMins += 24 * 60
     }
+    return { startMins, endMins }
   }
 
   // Generic event
