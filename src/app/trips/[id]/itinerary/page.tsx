@@ -677,11 +677,12 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
             {/* ── CHECKOUT CHIP ── */}
             {selDay && (() => {
-              const checkouts = events.filter(e =>
-                e.category === 'hotel' &&
-                e.accom_checkout_date &&
-                String(e.accom_checkout_date).slice(0,10) === selDay
-              )
+              const checkouts = events.filter(e => {
+                const ea = e as any
+                return e.category === 'hotel' &&
+                  ea.accom_checkout_date &&
+                  String(ea.accom_checkout_date).slice(0,10) === selDay
+              })
               if (!checkouts.length) return null
               return (
                 <>
