@@ -1,0 +1,18 @@
+{
+  "name": "Travel Planner",
+  "short_name": "Travel",
+  "description": "Planificador de viajes familiar",
+  "start_url": "/trips",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1e40af",
+  "theme_color": "#2563EB",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
