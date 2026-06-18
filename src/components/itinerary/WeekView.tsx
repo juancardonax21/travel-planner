@@ -37,7 +37,7 @@ function getEventTimes(ev: Event): { startMins: number; endMins: number } {
 
   if (ev.category === 'hotel') {
     // Show at check-in time
-    const startMins = timeToMins(e.accom_checkin_time || ev.time)
+    const startMins = timeToMins(ev.time)
     return { startMins, endMins: startMins + 30 } // 30min block
   }
 
