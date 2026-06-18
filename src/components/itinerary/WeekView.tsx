@@ -37,7 +37,7 @@ function getEventTimes(ev: Event): { startMins: number; endMins: number } {
 
   if (ev.category === 'hotel') {
     // Show at check-in time
-    const startMins = timeToMins(ev.time)
+    const startMins = timeToMins(e.accom_checkin_time || ev.time)
     return { startMins, endMins: startMins + 30 } // 30min block
   }
 
@@ -167,13 +167,13 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
                 <button className="absolute inset-0 w-full z-0 hover:bg-blue-50/20 transition-colors"
                   onClick={() => onDayClick(day)} />
 
-                {/* Events */}
+                {/* Events — including overnight continuations */}
                 {dayEvents.map(ev => {
                   const cfg = CAT_CONFIG[ev.category as keyof typeof CAT_CONFIG] || CAT_CONFIG.other
                   const Icon = CAT_ICONS[ev.category] || Tag
                   const { startMins, endMins } = getEventTimes(ev)
+                  const isOvernight = endMins > GRID_END * 60
 
-                  // Clamp to grid
                   const clampedStart = Math.max(startMins, GRID_START * 60)
                   const clampedEnd = Math.min(endMins, GRID_END * 60)
                   if (clampedStart >= GRID_END * 60) return null
@@ -182,11 +182,9 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
                   const height = Math.max(minsToY(clampedEnd) - minsToY(clampedStart), 24)
 
                   const e = ev as any
-                  const displayTime = ev.category === 'hotel'
-                    ? (e.accom_checkin_time?.slice(0, 5) || ev.time?.slice(0, 5))
-                    : ev.category === 'flight'
-                      ? (e.flight_segments?.[0]?.dep_time?.slice(0, 5) || ev.time?.slice(0, 5))
-                      : ev.time?.slice(0, 5)
+                  const displayTime = ev.category === 'flight'
+                    ? (e.flight_segments?.[0]?.dep_time?.slice(0, 5) || ev.time?.slice(0, 5))
+                    : ev.time?.slice(0, 5)
 
                   return (
                     <button key={ev.id}
@@ -196,17 +194,50 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
                       <div className="flex items-start gap-1 h-full overflow-hidden">
                         <Icon size={10} strokeWidth={2} className="flex-shrink-0 mt-0.5 opacity-70" />
                         <div className="min-w-0 flex-1 overflow-hidden">
-                          <p className="text-xs font-medium leading-tight truncate">
-                            {ev.title}
-                          </p>
+                          <p className="text-xs font-medium leading-tight truncate">{ev.title}</p>
                           {height > 36 && displayTime && (
-                            <p className="text-xs opacity-50 leading-none mt-0.5">{displayTime}</p>
+                            <p className="text-xs opacity-50 leading-none mt-0.5">{displayTime}{isOvernight ? ' →+1' : ''}</p>
                           )}
                         </div>
                       </div>
                     </button>
                   )
                 })}
+                {/* Overnight continuations from previous day */}
+                {(() => {
+                  const dayIdx = days.indexOf(day)
+                  if (dayIdx <= 0) return null
+                  const prevDay = days[dayIdx - 1]
+                  const prevDayEvents = events.filter(e => e.day === prevDay)
+                  return prevDayEvents.map(ev => {
+                    const { startMins, endMins } = getEventTimes(ev)
+                    if (endMins <= GRID_END * 60) return null // not overnight
+                    const cfg = CAT_CONFIG[ev.category as keyof typeof CAT_CONFIG] || CAT_CONFIG.other
+                    const Icon = CAT_ICONS[ev.category] || Tag
+                    const arrMins = endMins - 24 * 60 // actual arrival time in next day
+                    const clampedEnd = Math.min(arrMins, GRID_END * 60)
+                    const top = minsToY(GRID_START * 60)
+                    const height = Math.max(minsToY(clampedEnd) - top, 24)
+                    const e = ev as any
+                    const arrTime = e.flight_segments?.[e.flight_segments.length-1]?.arr_time?.slice(0,5) || ''
+                    return (
+                      <button key={ev.id + '-cont'}
+                        onClick={evt => { evt.stopPropagation(); onDayClick(ev.day) }}
+                        style={{ top, height, background: cfg.bg, color: cfg.color, borderColor: cfg.color + '33' }}
+                        className="absolute left-1 right-1 z-10 rounded-xl border px-1.5 py-1 text-left overflow-hidden hover:brightness-95 transition-all shadow-sm opacity-80">
+                        <div className="flex items-start gap-1 h-full overflow-hidden">
+                          <Icon size={10} strokeWidth={2} className="flex-shrink-0 mt-0.5 opacity-70" />
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <p className="text-xs font-medium leading-tight truncate">{ev.title}</p>
+                            {height > 36 && arrTime && (
+                              <p className="text-xs opacity-50 leading-none mt-0.5">llega {arrTime}</p>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })
+                })()}
               </div>
             )
           })}
