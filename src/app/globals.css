@@ -8,6 +8,7 @@
     --font-geist-mono: 'JetBrains Mono', monospace;
   }
   body {
+  overflow-x: hidden;
     @apply bg-slate-50 text-slate-900 antialiased;
   }
   * { @apply box-border; }
