@@ -16,7 +16,7 @@ type Status = 'ok' | 'warn' | 'expired' | 'missing'
 function getStatus(expiry?: string | null): Status {
   if (expiry === 'indefinido') return 'ok'
   if (!expiry) return 'missing'
-  const d = daysUntil(expiry)
+  const d = daysUntil(expiry ?? undefined)
   if (d === null) return 'missing'
   if (d < 0) return 'expired'
   if (d <= 90) return 'warn'
@@ -32,7 +32,7 @@ function StatusIcon({ status }: { status: Status }) {
 
 function statusLabel(status: Status, expiry?: string | null): string {
   if (status === 'missing') return 'Sin datos'
-  const d = daysUntil(expiry)
+  const d = daysUntil(expiry ?? undefined)
   if (status === 'expired') return 'Caducado'
   if (status === 'warn') return `Caduca en ${d}d`
   return `Hasta ${formatDate(expiry!, 'd MMM yyyy')}`
