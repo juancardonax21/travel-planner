@@ -93,6 +93,7 @@ function TripCard({ trip, index }: { trip: Trip; index: number }) {
               )}
             </div>
           </div>
+          </div>
         </div>
       </div>
     </Link>
