@@ -32,6 +32,7 @@ function destinationEmoji(dest: string) {
 
 function TripCard({ trip, index }: { trip: Trip; index: number }) {
   const dL = daysUntil(trip.start_date)
+  const coverImage = (trip as any).cover_image
   const isPast = (dL ?? 0) < -1
   const isActive = (dL ?? 1) <= 0 && (dL ?? 0) > -1
   const gradient = GRADIENTS[index % GRADIENTS.length]
@@ -40,8 +41,14 @@ function TripCard({ trip, index }: { trip: Trip; index: number }) {
   return (
     <Link href={`/trips/${trip.id}/itinerary`} className="block group">
       <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl transition-all duration-300 sm:group-hover:scale-[1.02] group-hover:shadow-2xl shadow-lg ${isPast ? 'opacity-70' : ''}`}>
-        {/* Background gradient */}
-        <div className={`bg-gradient-to-br ${gradient} p-6 pb-4 min-h-[180px] flex flex-col justify-between`}>
+        {/* Background: photo or gradient */}
+        <div className="relative">
+          {coverImage ? (
+            <><div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${coverImage})` }} /><div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-70`} /></>
+          ) : (
+            <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+          )}
+          <div className="relative p-4 sm:p-6 min-h-[160px] sm:min-h-[180px] flex flex-col justify-between">
           {/* Top row */}
           <div className="flex items-start justify-between">
             <div>
@@ -113,7 +120,7 @@ export default function TripsPage() {
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-violet-700 flex items-center justify-center">
       <div className="text-center text-white">
-        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center overflow-hidden p-1"><img src="/favicon.svg" alt="" className="w-full h-full object-contain" /></div>
+        <div className="text-6xl mb-4 animate-bounce">✈️</div>
         <p className="text-blue-200 text-lg">Cargando viajes...</p>
       </div>
     </div>
@@ -123,13 +130,13 @@ export default function TripsPage() {
   const past = trips.filter(t => (daysUntil(t.start_date) ?? 0) < 0)
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 overflow-x-hidden w-full">
       {/* Hero header */}
-      <div className="bg-gradient-to-br from-blue-900 via-blue-700 to-violet-700 text-white">
+      <div className="bg-gradient-to-br from-blue-900 via-blue-700 to-violet-700 text-white overflow-hidden">
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center overflow-hidden p-1"><img src="/favicon.svg" alt="" className="w-full h-full object-contain" /></div>
+              <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center text-xl">✈️</div>
               <div>
                 <h1 className="text-xl font-bold">Travel Planner</h1>
                 <p className="text-blue-300 text-xs">{user?.email}</p>
