@@ -208,7 +208,7 @@ function checkTravelDocs(travelers: any[], tripEndDate: string, destination: str
     if (isUSA && !tv.esta_number) issues.push('Sin ESTA')
     else if (isUSA && tv.esta_expiry && tv.esta_expiry < tripEndDate) issues.push('ESTA caducada')
   })
-  const unique = [...new Set(issues)]
+  const unique = issues.filter((v, i, a) => a.indexOf(v) === i)
   if (unique.length === 0) return { status: 'ok' as const, msg: 'Docs OK' }
   if (unique.some(i => i.startsWith('Sin '))) return { status: 'missing' as const, msg: unique[0] }
   return { status: 'warn' as const, msg: unique[0] }
