@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Travel Planner',
-  icons: { icon: '/favicon.svg' },
+  icons: [{ rel: 'icon', url: '/favicon.svg', type: 'image/svg+xml' }],
   description: 'Planificador de viajes familiar',
 }
 
