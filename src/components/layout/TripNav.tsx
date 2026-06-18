@@ -43,11 +43,7 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
             <h1 className="text-xl font-bold truncate drop-shadow">{trip.name}</h1>
             <p className="text-white/70 text-xs mt-0.5">
               {formatDate(trip.start_date, 'd MMM')} — {formatDate(trip.end_date, 'd MMM yyyy')}
-              {trip.travelers && trip.travelers.length > 0 && (
-                <span className="ml-2 inline-flex items-center gap-1">
-                  <Users size={10} /> {trip.travelers.length}
-                </span>
-              )}
+
             </p>
           </div>
           <div className="flex items-center gap-2.5 flex-shrink-0">

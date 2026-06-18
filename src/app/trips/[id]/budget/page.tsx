@@ -5,7 +5,7 @@ import type { Trip } from '@/types'
 import { daysUntil, formatDate, formatCurrency } from '@/lib/utils'
 import TripNav from '@/components/layout/TripNav'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
-import { Plane, BedDouble, Car, Compass, UtensilsCrossed, Tag, CheckCircle2, Circle, ArrowLeftRight, AlertTriangle, Ticket, Shield, CreditCard } from 'lucide-react'
+import { Plane, BedDouble, Car, Compass, UtensilsCrossed, Tag, CheckCircle2, Circle, ArrowLeftRight, AlertTriangle, Ticket, Shield } from 'lucide-react'
 
 const BCAT: Record<string, { label: string; color: string; bg: string; Icon: any }> = {
   flights:    { label: 'Vuelos',       color: '#1D4ED8', bg: '#DBEAFE', Icon: Plane },
@@ -34,7 +34,7 @@ export default function BudgetPage({ params }: { params: { id: string } }) {
   const { id } = params
   const [trip, setTrip] = useState<Trip | null>(null)
   const [items, setItems] = useState<EventItem[]>([])
-  const [showAlt, setShowAlt] = useState(false)
+  const [showAlt, setShowAlt] = useState(true)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

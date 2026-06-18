@@ -72,9 +72,9 @@ function TripCard({ trip, index }: { trip: Trip; index: number }) {
                    isActive ? '✈️ ¡En marcha!' :
                    `En ${dL} días`}
                 </span>
-                {trip.travelers && trip.travelers.length > 0 && (
+                {(trip as any).trip_members && (trip as any).trip_members.length > 0 && (
                   <span className="text-white/60 text-xs flex items-center gap-1">
-                    <Users size={11} strokeWidth={1.8} /> {trip.travelers.length}
+                    <Users size={11} strokeWidth={1.8} /> {(trip as any).trip_members?.length}
                   </span>
                 )}
               </div>
