@@ -57,7 +57,7 @@ function TripCard({ trip, index }: { trip: Trip; index: number }) {
               </p>
               <h3 className="text-white font-bold text-base sm:text-xl leading-tight">{trip.name}</h3>
             </div>
-            <div className="text-5xl opacity-80">{emoji}</div>
+
           </div>
 
           {/* Dates */}
@@ -66,28 +66,13 @@ function TripCard({ trip, index }: { trip: Trip; index: number }) {
               {formatDate(trip.start_date, 'd MMM')} — {formatDate(trip.end_date, 'd MMM yyyy')}
             </p>
 
-            {/* Status bar */}
             <div className="flex items-center justify-between mt-3">
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-medium px-3 py-1 rounded-full backdrop-blur-sm ${
-                  isPast ? 'bg-white/20 text-white/70' :
-                  isActive ? 'bg-yellow-400 text-yellow-900' :
-                  (dL ?? 0) <= 30 ? 'bg-white/30 text-white' :
-                  'bg-white/20 text-white/80'
-                }`}>
-                  {isPast ? '✓ Completado' :
-                   isActive ? '✈️ ¡En marcha!' :
-                   `En ${dL} días`}
-                </span>
-                {(trip as any).trip_members && (trip as any).trip_members.length > 0 && (
-                  <span className="text-white/60 text-xs flex items-center gap-1">
-                    <Users size={11} strokeWidth={1.8} /> {(trip as any).trip_members?.length}
-                  </span>
-                )}
+              <div className="text-white/70 text-xs">
+                {isPast ? '✓ Completado' : isActive ? 'En marcha' : ''}
               </div>
               {!isPast && dL !== null && dL > 0 && (
                 <div className="text-right">
-                  <span className="text-4xl font-black text-white/90 leading-none font-mono">{dL}</span>
+                  <span className="text-3xl font-black text-white leading-none font-mono drop-shadow">{dL}</span>
                   <span className="text-white/60 text-xs ml-1">días</span>
                 </div>
               )}
