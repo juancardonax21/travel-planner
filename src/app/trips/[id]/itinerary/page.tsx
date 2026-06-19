@@ -676,7 +676,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                     <Map size={14} /> Mapa
                   </button>
                 )}
-                <button onClick={openNew} className="btn-primary text-sm flex items-center gap-1.5"><Plus size={14} strokeWidth={2.5} /> Añadir</button>
+                
               </div>
             </div>
 
@@ -1006,7 +1006,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                 <div className="card p-12 text-center">
                   <CalendarDays size={40} className="mx-auto text-slate-200 mb-3" strokeWidth={1} />
                   <p className="text-slate-400 mb-4">Sin eventos este día</p>
-                  <button onClick={openNew} className="btn-primary text-sm px-6 flex items-center gap-1.5 mx-auto"><Plus size={15} /> Añadir</button>
+                  
                 </div>
               ) : dayEvents.map(ev => {
                 const cfg = CAT_CONFIG[ev.category]
