@@ -57,6 +57,7 @@ const DOC_SLOTS = [
   { type: 'tse',           label: 'TSE' },
   { type: 'health_ins',    label: 'Seguro médico' },
   { type: 'drive_license', label: 'Carnet de conducir' },
+  { type: 'vaccines',      label: 'Vacunas / Certificados' },
 ]
 
 function MemberDocs({ memberId }: { memberId: string }) {

@@ -73,7 +73,7 @@ function TravelerTickets({ memberId, tripId }: { memberId: string; tripId: strin
   return (
     <div className="mt-3 pt-3 border-t border-slate-100 px-4 pb-3">
       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1">
-        <Ticket size={11} strokeWidth={2} /> Billetes
+        <Ticket size={11} strokeWidth={2} /> Billetes y documentos
       </p>
       <div className="space-y-1.5">
         {docs.map((doc: any) => (
