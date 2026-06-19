@@ -555,10 +555,6 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
         {/* View toggle + day picker */}
         <div className="flex items-center justify-between mb-2 pt-2">
-          <button onClick={() => setShowScanner(true)}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border border-violet-200 text-violet-600 hover:bg-violet-50 transition-colors font-medium">
-            <Sparkles size={14} strokeWidth={2} /> Escanear billete
-          </button>
           <div className="flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
             <button onClick={() => setViewMode('week')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
@@ -573,17 +569,17 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
               <List size={13} strokeWidth={2} /> Vista día
             </button>
           </div>
-          {viewMode === 'day' && (
-            <div className="flex gap-2">
-              <button onClick={() => setShowScanner(true)}
-                className="btn-secondary text-sm flex items-center gap-1.5 border-violet-200 text-violet-600 hover:bg-violet-50">
-                <Sparkles size={14} strokeWidth={2} /> IA
-              </button>
+          <div className="flex gap-2">
+            <button onClick={() => setShowScanner(true)}
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border border-violet-200 text-violet-600 hover:bg-violet-50 transition-colors font-medium">
+              <Sparkles size={14} strokeWidth={2} /> Escanear
+            </button>
+            {viewMode === 'day' && (
               <button onClick={openNew} className="btn-primary text-sm flex items-center gap-1.5">
                 <Plus size={14} strokeWidth={2.5} /> Añadir
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Week view */}

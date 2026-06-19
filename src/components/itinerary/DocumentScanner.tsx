@@ -2,7 +2,8 @@
 import { useState, useRef } from 'react'
 import { Upload, Sparkles, X, FileText, AlertTriangle } from 'lucide-react'
 
-const SYSTEM_PROMPT = `Eres un asistente que extrae datos de billetes, reservas y documentos de viaje.
+// SYSTEM_PROMPT moved to server API route
+const _UNUSED = `placeholder, reservas y documentos de viaje.
 Analiza el documento y devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin texto adicional) con esta estructura exacta según el tipo de documento:
 
 PARA VUELOS (category: "flight"):
@@ -151,27 +152,14 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
         ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
         : { type: 'image', source: { type: 'base64', media_type: file.type, data: base64 } }
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/scan-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1000,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: [
-            contentBlock,
-            { type: 'text', text: `Extrae los datos de este documento. La fecha del viaje es aproximadamente ${tripDay}. Devuelve solo el JSON.` }
-          ]}]
-        })
+        body: JSON.stringify({ fileBase64: base64, fileType: file.type, tripDay })
       })
-
-      const data = await response.json()
-      const text = data.content?.find((b: any) => b.type === 'text')?.text || ''
-
-      // Parse JSON — strip any markdown fences
-      const clean = text.replace(/```json|```/g, '').trim()
-      const extracted = JSON.parse(clean)
-      onExtracted(extracted)
+      const result = await response.json()
+      if (!result.ok) throw new Error(result.error || 'Error del servidor')
+      onExtracted(result.data)
     } catch (e: any) {
       setError('No se pudo analizar el documento. Inténtalo de nuevo.')
       console.error(e)
