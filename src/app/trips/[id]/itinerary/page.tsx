@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
 import { formatDate, CAT_CONFIG, formatCurrency } from '@/lib/utils'
@@ -409,13 +409,41 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     setSegments(prev => prev.map((s, i) => i === idx ? { ...s, [key]: val } : s))
   }
 
-  function handleExtracted(data: any) {
+  function handleExtracted(extracted: any) {
     setShowScanner(false)
-    // Merge extracted data into form, set day
-    setForm({ ...EMPTY, ...data, event_date: data.event_date || selDay })
-    setSelDay(data.event_date || selDay)
+    const items = Array.isArray(extracted) ? extracted : [extracted]
+    const first = items[0]
+
+    // If flight with return, save return for later
+    if (first.category === 'flight' && items[1]) setPendingReturn(items[1])
+
+    const day = first.event_date || selDay
+    setSelDay(day)
     setViewMode('day')
-    setShowForm(true)
+    setEditEvent(null)
+
+    if (first.category === 'flight') {
+      const segs = (first.flight_segments || []).slice(0, 3)
+      const stops = Math.max(0, segs.length - 1)
+      setNumStops(stops)
+      setTimeout(() => {
+        setSegments(segs.length ? segs : [EMPTY_SEG()])
+        setForm({ ...EMPTY, ...first, event_date: day, num_stops: stops })
+        setShowForm(true)
+      }, 50)
+    } else if (first.category === 'hotel') {
+      setForm({
+        ...EMPTY, ...first,
+        event_date: day,
+        category: 'hotel',
+        accom_checkout_date: first.checkout_date || '',
+        location: first.location || '',
+      })
+      setShowForm(true)
+    } else {
+      setForm({ ...EMPTY, ...first, event_date: day })
+      setShowForm(true)
+    }
   }
 
   function loadReturnFlight() {

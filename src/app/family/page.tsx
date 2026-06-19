@@ -50,109 +50,6 @@ const EMPTY: Partial<FamilyMember> = {
   drive_license: '', drive_license_expiry: '',
 }
 
-// ── Document links per member ─────────────────────────────────────
-const DOC_SLOTS = [
-  { type: 'passport',      label: 'Pasaporte' },
-  { type: 'dni',           label: 'DNI' },
-  { type: 'tse',           label: 'TSE' },
-  { type: 'health_ins',    label: 'Seguro médico' },
-  { type: 'vaccines',      label: 'Vacunas / Certificados' },
-  { type: 'drive_license', label: 'Carnet de conducir' },
-]
-
-function MemberDocs({ memberId }: { memberId: string }) {
-  const [docs, setDocs] = useState<any[]>([])
-  const [editing, setEditing] = useState<string | null>(null)
-  const [url, setUrl] = useState('')
-
-  useEffect(() => {
-    supabase.from('member_documents')
-      .select('*').eq('family_member_id', memberId).is('trip_id', null)
-      .then(({ data }) => setDocs(data || []))
-  }, [memberId])
-
-  async function save(type: string, label: string) {
-    if (!url.trim()) { setEditing(null); return }
-    const existing = docs.find(d => d.type === type)
-    if (existing) {
-      await supabase.from('member_documents').update({ file_url: url.trim() }).eq('id', existing.id)
-      setDocs(prev => prev.map(d => d.type === type ? { ...d, file_url: url.trim() } : d))
-    } else {
-      const { data: newDoc } = await supabase.from('member_documents').insert({
-        family_member_id: memberId, trip_id: null, type, label, file_url: url.trim(), file_name: label,
-      }).select().single()
-      if (newDoc) setDocs(prev => [...prev, newDoc])
-    }
-    setUrl(''); setEditing(null)
-  }
-
-  async function remove(type: string) {
-    const doc = docs.find(d => d.type === type)
-    if (!doc) return
-    await supabase.from('member_documents').delete().eq('id', doc.id)
-    setDocs(prev => prev.filter(d => d.type !== type))
-  }
-
-  return (
-    <div className="px-4 py-3 border-t border-slate-50">
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
-        Documentos personales
-      </p>
-      <div className="space-y-2">
-        {DOC_SLOTS.map(slot => {
-          const doc = docs.find(d => d.type === slot.type)
-          const isEditing = editing === slot.type
-          return (
-            <div key={slot.type}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm text-slate-600 flex-1">{slot.label}</span>
-                {doc && !isEditing ? (
-                  <div className="flex items-center gap-1.5">
-                    <a href={doc.file_url} target="_blank" rel="noopener"
-                      className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100 transition-colors">
-                      <ExternalLink size={10} strokeWidth={2} /> Ver
-                    </a>
-                    <button onClick={() => { setEditing(slot.type); setUrl(doc.file_url) }}
-                      className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors">
-                      ↻
-                    </button>
-                    <button onClick={() => remove(slot.type)}
-                      className="text-slate-300 hover:text-red-500 transition-colors">
-                      <X size={11} strokeWidth={2} />
-                    </button>
-                  </div>
-                ) : !isEditing ? (
-                  <button onClick={() => { setEditing(slot.type); setUrl('') }}
-                    className="text-xs text-slate-400 hover:text-violet-600 bg-slate-50 hover:bg-violet-50 border border-slate-200 hover:border-violet-200 px-2 py-1 rounded-lg transition-colors flex items-center gap-1">
-                    <ExternalLink size={10} strokeWidth={2} /> Añadir enlace
-                  </button>
-                ) : null}
-              </div>
-              {isEditing && (
-                <div className="mt-1.5 flex gap-1.5">
-                  <input className="input text-xs py-1.5 font-mono flex-1"
-                    placeholder="https://drive.google.com/..."
-                    value={url} onChange={e => setUrl(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && save(slot.type, slot.label)} />
-                  <button onClick={() => save(slot.type, slot.label)}
-                    className="bg-blue-600 text-white text-xs px-3 rounded-xl hover:bg-blue-700 transition-colors">
-                    OK
-                  </button>
-                  <button onClick={() => { setEditing(null); setUrl('') }}
-                    className="text-slate-400 hover:text-slate-600 text-xs px-2">
-                    ✕
-                  </button>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-
 export default function FamilyPage() {
   const router = useRouter()
   const [members, setMembers] = useState<FamilyMember[]>([])
@@ -187,8 +84,13 @@ export default function FamilyPage() {
 
   async function saveEdit(id: string) {
     setSaving(true)
-    await supabase.from('family_members').update(form).eq('id', id)
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, ...form } : m))
+    const toSave: any = { ...form }
+    try { toSave.entry_permits = JSON.parse(toSave.entry_permits_json || '[]') } catch {}
+    try { toSave.vaccines = JSON.parse(toSave.vaccines_json || '[]') } catch {}
+    delete toSave.entry_permits_json
+    delete toSave.vaccines_json
+    await supabase.from('family_members').update(toSave).eq('id', id)
+    setMembers(prev => prev.map(m => m.id === id ? { ...m, ...toSave } : m))
     setEditing(null)
     setSaving(false)
   }
@@ -310,7 +212,15 @@ export default function FamilyPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button onClick={() => { setEditing(isEditing ? null : m.id); setForm(m); setExpanded(m.id) }}
+                  <button onClick={() => {
+                      setEditing(isEditing ? null : m.id)
+                      setForm({
+                        ...m,
+                        entry_permits_json: JSON.stringify((m as any).entry_permits || []),
+                        vaccines_json: JSON.stringify((m as any).vaccines || []),
+                      } as any)
+                      setExpanded(m.id)
+                    }}
                     className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-colors">
                     <Pencil size={14} />
                   </button>
@@ -355,40 +265,118 @@ export default function FamilyPage() {
 // ── Member form (reusable) ────────────────────────────────────────────────────
 function MemberForm({ form, upd }: {
   form: Partial<FamilyMember>
-  upd: (k: keyof FamilyMember, v: string) => void
+  upd: (k: any, v: any) => void
 }) {
+  const permits: any[] = (() => { try { return JSON.parse((form as any).entry_permits_json || '[]') } catch { return [] } })()
+  const vaccines: any[] = (() => { try { return JSON.parse((form as any).vaccines_json || '[]') } catch { return [] } })()
+
+  // Doc URLs from member_documents
+  const [docUrls, setDocUrls] = useState<Record<string, string>>({})
+  useEffect(() => {
+    if (!(form as any).id) return
+    supabase.from('member_documents').select('type,file_url,id')
+      .eq('family_member_id', (form as any).id).is('trip_id', null)
+      .then(({ data }) => {
+        const map: Record<string, string> = {}
+        ;(data || []).forEach((d: any) => { map[d.type] = d.file_url })
+        setDocUrls(map)
+      })
+  }, [(form as any).id])
+
+  async function saveDocUrl(type: string, url: string) {
+    const memberId = (form as any).id
+    if (!memberId) return
+    const labels: Record<string, string> = {
+      passport: 'Pasaporte', dni: 'DNI', tse: 'TSE',
+      health_ins: 'Seguro médico', drive_license: 'Carnet de conducir'
+    }
+    const existing = await supabase.from('member_documents')
+      .select('id').eq('family_member_id', memberId).eq('type', type).is('trip_id', null).single()
+    if (url.trim()) {
+      if (existing.data?.id) {
+        await supabase.from('member_documents').update({ file_url: url }).eq('id', existing.data.id)
+      } else {
+        await supabase.from('member_documents').insert({
+          family_member_id: memberId, trip_id: null, type,
+          label: labels[type] || type, file_url: url, file_name: labels[type] || type
+        })
+      }
+    } else if (existing.data?.id) {
+      await supabase.from('member_documents').delete().eq('id', existing.data.id)
+    }
+    setDocUrls(prev => ({ ...prev, [type]: url }))
+  }
+
+  function UrlField({ type }: { type: string }) {
+    const [val, setVal] = useState(docUrls[type] || '')
+    useEffect(() => setVal(docUrls[type] || ''), [docUrls[type]])
+    return (
+      <div className="col-span-2">
+        <label className="label flex items-center gap-1"><ExternalLink size={10} strokeWidth={1.8} /> Enlace documento</label>
+        <input className="input font-mono text-xs" placeholder="https://drive.google.com/..."
+          value={val} onChange={e => setVal(e.target.value)}
+          onBlur={() => saveDocUrl(type, val)} />
+      </div>
+    )
+  }
+
+  function updPermit(i: number, k: string, v: string) {
+    const a = [...permits]; a[i] = { ...a[i], [k]: v }
+    upd('entry_permits_json', JSON.stringify(a))
+  }
+  function addPermit() { upd('entry_permits_json', JSON.stringify([...permits, { type: '', number: '', expiry: '', doc_url: '' }])) }
+  function removePermit(i: number) { upd('entry_permits_json', JSON.stringify(permits.filter((_: any, j: number) => j !== i))) }
+
+  function updVaccine(i: number, k: string, v: string) {
+    const a = [...vaccines]; a[i] = { ...a[i], [k]: v }
+    upd('vaccines_json', JSON.stringify(a))
+  }
+  function addVaccine() { upd('vaccines_json', JSON.stringify([...vaccines, { name: '', date: '', doc_url: '' }])) }
+  function removeVaccine(i: number) { upd('vaccines_json', JSON.stringify(vaccines.filter((_: any, j: number) => j !== i))) }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+
+      {/* Personal */}
       <div>
-        <label className="label">Nombre completo *</label>
-        <input className="input" value={form.name || ''} onChange={e => upd('name', e.target.value)} placeholder="Juan García López" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="label">Fecha nacimiento</label>
-          <input className="input" type="date" value={form.birthdate || ''} onChange={e => upd('birthdate', e.target.value)} />
-        </div>
-        <div>
-          <label className="label">DNI / NIE</label>
-          <input className="input font-mono" value={form.dni || ''} onChange={e => upd('dni', e.target.value)} />
-        </div>
-        <div>
-          <label className="label flex items-center gap-1"><Mail size={10} /> Email</label>
-          <input className="input" type="email" value={form.email || ''} onChange={e => upd('email', e.target.value)} />
-        </div>
-        <div>
-          <label className="label flex items-center gap-1"><Phone size={10} /> Teléfono</label>
-          <input className="input" type="tel" value={form.phone || ''} onChange={e => upd('phone', e.target.value)} />
-        </div>
-      </div>
-
-      <div className="border-t border-slate-100 pt-4">
-        <div className="flex items-center gap-1.5 mb-3">
-          <CreditCard size={12} strokeWidth={2} className="text-blue-400" />
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Documentos de viaje</span>
-        </div>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Personal</p>
         <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="label">Nombre completo *</label>
+            <input className="input" value={form.name || ''} onChange={e => upd('name', e.target.value)} placeholder="Juan García López" />
+          </div>
+          <div>
+            <label className="label">Fecha nacimiento</label>
+            <input className="input" type="date" value={form.birthdate || ''} onChange={e => upd('birthdate', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">DNI / NIE</label>
+            <input className="input font-mono" value={form.dni || ''} onChange={e => upd('dni', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Email</label>
+            <input className="input" type="email" value={form.email || ''} onChange={e => upd('email', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Teléfono</label>
+            <input className="input" type="tel" value={form.phone || ''} onChange={e => upd('phone', e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Identificación */}
+      <div className="border-t border-slate-100 pt-4">
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Identificación</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">DNI / NIE</label>
+            <input className="input font-mono" value={form.dni || ''} onChange={e => upd('dni', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Caducidad DNI</label>
+            <input className="input" type="date" value={(form as any).dni_expiry || ''} onChange={e => upd('dni_expiry' as any, e.target.value)} />
+          </div>
+          <UrlField type="dni" />
           <div>
             <label className="label">Pasaporte nº</label>
             <input className="input font-mono" placeholder="AAA123456" value={form.passport_number || ''} onChange={e => upd('passport_number', e.target.value)} />
@@ -397,22 +385,59 @@ function MemberForm({ form, upd }: {
             <label className="label">Caducidad pasaporte</label>
             <input className="input" type="date" value={form.passport_expiry || ''} onChange={e => upd('passport_expiry', e.target.value)} />
           </div>
+          <UrlField type="passport" />
           <div>
-            <label className="label">ESTA nº</label>
-            <input className="input font-mono" placeholder="E123456789" value={form.esta_number || ''} onChange={e => upd('esta_number', e.target.value)} />
+            <label className="label">Carnet conducir nº</label>
+            <input className="input font-mono" value={form.drive_license || ''} onChange={e => upd('drive_license', e.target.value)} />
           </div>
           <div>
-            <label className="label">Caducidad ESTA</label>
-            <input className="input" type="date" value={form.esta_expiry || ''} onChange={e => upd('esta_expiry', e.target.value)} />
+            <label className="label">Caducidad carnet</label>
+            <input className="input" type="date" value={form.drive_license_expiry || ''} onChange={e => upd('drive_license_expiry', e.target.value)} />
           </div>
+          <UrlField type="drive_license" />
+        </div>
+
+        {/* Entry permits */}
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Permisos de entrada (ESTA, ETA...)</p>
+            <button type="button" onClick={addPermit}
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium">+ Añadir</button>
+          </div>
+          {permits.map((p: any, i: number) => (
+            <div key={i} className="grid grid-cols-2 gap-2 mb-2 bg-slate-50 rounded-xl p-3 relative">
+              <button type="button" onClick={() => removePermit(i)}
+                className="absolute top-2 right-2 text-slate-300 hover:text-red-500 transition-colors">
+                <X size={13} strokeWidth={2} />
+              </button>
+              <div>
+                <label className="label">Tipo</label>
+                <input className="input font-mono text-sm" placeholder="ESTA / ETA / eTA..." value={p.type || ''}
+                  onChange={e => updPermit(i, 'type', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Número</label>
+                <input className="input font-mono text-sm" placeholder="E123456789" value={p.number || ''}
+                  onChange={e => updPermit(i, 'number', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Caducidad</label>
+                <input className="input text-sm" type="date" value={p.expiry || ''}
+                  onChange={e => updPermit(i, 'expiry', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Enlace doc</label>
+                <input className="input font-mono text-xs" placeholder="https://drive.google.com/..." value={p.doc_url || ''}
+                  onChange={e => updPermit(i, 'doc_url', e.target.value)} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
+      {/* Sanidad */}
       <div className="border-t border-slate-100 pt-4">
-        <div className="flex items-center gap-1.5 mb-3">
-          <Heart size={12} strokeWidth={2} className="text-rose-400" />
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Sanidad</span>
-        </div>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Sanidad</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">TSE nº</label>
@@ -422,6 +447,7 @@ function MemberForm({ form, upd }: {
             <label className="label">Caducidad TSE</label>
             <input className="input" type="date" value={form.tse_expiry || ''} onChange={e => upd('tse_expiry', e.target.value)} />
           </div>
+          <UrlField type="tse" />
           <div>
             <label className="label">Seguro médico nº</label>
             <input className="input font-mono" placeholder="POL-123456" value={form.health_ins_number || ''} onChange={e => upd('health_ins_number', e.target.value)} />
@@ -430,12 +456,12 @@ function MemberForm({ form, upd }: {
             <label className="label">Caducidad seguro</label>
             {form.health_ins_expiry === 'indefinido' ? (
               <div className="flex items-center gap-2">
-                <div className="input flex items-center gap-2 text-emerald-600 bg-emerald-50 border-emerald-200">
-                  <CheckCircle2 size={14} strokeWidth={2} /> Suscripción activa
+                <div className="input flex items-center gap-2 text-emerald-600 bg-emerald-50 border-emerald-200 text-sm">
+                  <CheckCircle2 size={13} strokeWidth={2} /> Suscripción activa
                 </div>
                 <button type="button" onClick={() => upd('health_ins_expiry', '')}
                   className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 border border-slate-200 rounded-xl">
-                  Cambiar
+                  ✕
                 </button>
               </div>
             ) : (
@@ -443,96 +469,176 @@ function MemberForm({ form, upd }: {
                 <input className="input" type="date" value={form.health_ins_expiry || ''} onChange={e => upd('health_ins_expiry', e.target.value)} />
                 <button type="button" onClick={() => upd('health_ins_expiry', 'indefinido')}
                   className="text-xs text-slate-400 hover:text-blue-600 text-left transition-colors">
-                  Sin caducidad (suscripción mensual) →
+                  Sin caducidad →
                 </button>
               </div>
             )}
           </div>
+          <UrlField type="health_ins" />
           <div className="col-span-2">
-            <label className="label flex items-center gap-1"><Phone size={10} /> Teléfono emergencias seguro</label>
+            <label className="label">Tel. emergencias seguro</label>
             <input className="input" type="tel" placeholder="+34 900 000 000" value={form.health_ins_phone || ''} onChange={e => upd('health_ins_phone', e.target.value)} />
           </div>
         </div>
+
+        {/* Vaccines */}
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Vacunas</p>
+            <button type="button" onClick={addVaccine}
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium">+ Añadir</button>
+          </div>
+          {vaccines.map((v: any, i: number) => (
+            <div key={i} className="grid grid-cols-2 gap-2 mb-2 bg-slate-50 rounded-xl p-3 relative">
+              <button type="button" onClick={() => removeVaccine(i)}
+                className="absolute top-2 right-2 text-slate-300 hover:text-red-500 transition-colors">
+                <X size={13} strokeWidth={2} />
+              </button>
+              <div>
+                <label className="label">Vacuna</label>
+                <input className="input text-sm" placeholder="COVID-19, Fiebre amarilla..." value={v.name || ''}
+                  onChange={e => updVaccine(i, 'name', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Fecha</label>
+                <input className="input text-sm" type="date" value={v.date || ''}
+                  onChange={e => updVaccine(i, 'date', e.target.value)} />
+              </div>
+              <div className="col-span-2">
+                <label className="label">Enlace certificado</label>
+                <input className="input font-mono text-xs" placeholder="https://drive.google.com/..." value={v.doc_url || ''}
+                  onChange={e => updVaccine(i, 'doc_url', e.target.value)} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="border-t border-slate-100 pt-4">
-        <div className="flex items-center gap-1.5 mb-3">
-          <Car size={12} strokeWidth={2} className="text-slate-400" />
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Conducción</span>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Carnet conducir nº</label>
-            <input className="input font-mono" value={form.drive_license || ''} onChange={e => upd('drive_license', e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Caducidad carnet</label>
-            <input className="input" type="date" value={form.drive_license_expiry || ''} onChange={e => upd('drive_license_expiry', e.target.value)} />
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
 
+
 // ── Member view (read-only) ───────────────────────────────────────────────────
 function MemberView({ member: m }: { member: FamilyMember }) {
-  function Row({ label, value, expiry }: { label: string; value?: string; expiry?: string }) {
-    if (!value && !expiry) return null
+  const [docsState, setDocsState] = useState<any[]>([])
+
+  useEffect(() => {
+    supabase.from('member_documents')
+      .select('*').eq('family_member_id', m.id).is('trip_id', null)
+      .then(({ data }) => setDocsState(data || []))
+  }, [m.id])
+
+  function docUrl(type: string) {
+    return docsState.find(d => d.type === type)?.file_url
+  }
+
+  function Row({ label, value, expiry, docType }: {
+    label: string; value?: string; expiry?: string; docType?: string
+  }) {
+    const url = docType ? docUrl(docType) : undefined
+    if (!value && !expiry && !url) return null
     const s = docStatus(expiry)
     return (
-      <div className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm text-slate-600">{label}</span>
-          {value && <span className="text-xs font-mono text-slate-400">{value}</span>}
-        </div>
+      <div className="flex items-center gap-2 py-2 border-b border-slate-50 last:border-0">
+        <span className="text-sm text-slate-500 w-36 flex-shrink-0">{label}</span>
+        <span className="text-sm font-mono text-slate-800 flex-1 truncate">{value || ''}</span>
         {expiry && (
-          <span className={`text-xs flex-shrink-0 ml-2 ${
-            s === 'expired' ? 'text-red-500' : s === 'warn' ? 'text-amber-600' :
-            s === 'ok' ? 'text-emerald-600' : 'text-slate-300'
+          <span className={`text-xs flex-shrink-0 w-20 text-right ${
+            s === 'expired' ? 'text-red-500' : s === 'warn' ? 'text-amber-600' : 'text-emerald-600'
           }`}>
-            {s === 'expired' ? '⚠️ Caducado' : `hasta ${formatDate(expiry, 'd MMM yyyy')}`}
+            {s === 'expired' ? 'Caducado' : formatDate(expiry, 'd MMM yy')}
           </span>
         )}
+        {!expiry && <span className="w-20 flex-shrink-0" />}
+        {url
+          ? <a href={url} target="_blank" rel="noopener"
+              className="flex items-center gap-0.5 text-xs text-blue-500 hover:text-blue-700 w-8 flex-shrink-0">
+              <ExternalLink size={10} strokeWidth={2} /> Ver
+            </a>
+          : <span className="w-8 flex-shrink-0" />
+        }
       </div>
     )
   }
 
+  const permits: any[] = (m as any).entry_permits || []
+  const vaccines: any[] = (m as any).vaccines || []
+
   return (
     <div className="divide-y divide-slate-50 text-sm">
-      {(m.email || m.phone || m.birthdate || m.dni) && (
+
+      {/* Personal */}
+      {(m.email || m.phone || m.birthdate) && (
         <div className="px-4 py-3">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Personal</p>
           {m.birthdate && <Row label="Nacimiento" value={formatDate(m.birthdate, 'd MMM yyyy')} />}
           {m.email && <Row label="Email" value={m.email} />}
           {m.phone && <Row label="Teléfono" value={m.phone} />}
-          {m.dni && <Row label="DNI" value={m.dni} />}
         </div>
       )}
+
+      {/* Identificación */}
       <div className="px-4 py-3">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Viaje</p>
-        <Row label="Pasaporte" value={m.passport_number} expiry={m.passport_expiry} />
-        <Row label="ESTA" value={m.esta_number} expiry={m.esta_expiry} />
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Identificación</p>
+        <Row label="DNI / NIE" value={m.dni} expiry={(m as any).dni_expiry} docType="dni" />
+        <Row label="Pasaporte" value={m.passport_number} expiry={m.passport_expiry} docType="passport" />
+        <Row label="Carnet conducir" value={m.drive_license} expiry={m.drive_license_expiry} docType="drive_license" />
+        {permits.map((p: any, i: number) => (
+          <div key={i} className="flex items-center gap-2 py-2 border-b border-slate-50 last:border-0">
+            <span className="text-sm text-slate-500 w-36 flex-shrink-0">{p.type || 'Permiso'}</span>
+            <span className="text-sm font-mono text-slate-800 flex-1 truncate">{p.number || ''}</span>
+            {p.expiry
+              ? <span className={`text-xs flex-shrink-0 w-20 text-right ${
+                  docStatus(p.expiry) === 'expired' ? 'text-red-500' :
+                  docStatus(p.expiry) === 'warn' ? 'text-amber-600' : 'text-emerald-600'
+                }`}>{formatDate(p.expiry, 'd MMM yy')}</span>
+              : <span className="w-20 flex-shrink-0" />
+            }
+            {p.doc_url
+              ? <a href={p.doc_url} target="_blank" rel="noopener"
+                  className="flex items-center gap-0.5 text-xs text-blue-500 hover:text-blue-700 w-8 flex-shrink-0">
+                  <ExternalLink size={10} strokeWidth={2} /> Ver
+                </a>
+              : <span className="w-8 flex-shrink-0" />
+            }
+          </div>
+        ))}
       </div>
+
+      {/* Sanidad */}
       <div className="px-4 py-3">
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Sanidad</p>
-        <Row label="TSE" value={m.tse_number} expiry={m.tse_expiry} />
-        <Row label="Seguro médico" value={m.health_ins_number} expiry={m.health_ins_expiry} />
+        <Row label="TSE" value={m.tse_number} expiry={m.tse_expiry} docType="tse" />
+        <Row label="Seguro médico" value={m.health_ins_number} expiry={m.health_ins_expiry} docType="health_ins" />
         {m.health_ins_phone && (
-          <div className="flex items-center justify-between py-1.5">
-            <span className="text-sm text-slate-600">Emergencias</span>
-            <a href={`tel:${m.health_ins_phone}`} className="text-xs text-blue-600 font-mono hover:underline">
+          <div className="flex items-center gap-2 py-2 border-b border-slate-50 last:border-0">
+            <span className="text-sm text-slate-500 w-36 flex-shrink-0">Emergencias</span>
+            <a href={`tel:${m.health_ins_phone}`} className="text-sm text-blue-600 font-mono hover:underline flex-1">
               {m.health_ins_phone}
             </a>
           </div>
         )}
+        {(vaccines.length > 0) && (
+          <div className="mt-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Vacunas</p>
+            {vaccines.map((v: any, i: number) => (
+              <div key={i} className="flex items-center gap-2 py-2 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500 w-36 flex-shrink-0">{v.name || 'Vacuna'}</span>
+                <span className="text-sm text-slate-800 flex-1">{v.date ? formatDate(v.date, 'd MMM yyyy') : ''}</span>
+                <span className="w-20 flex-shrink-0" />
+                {v.doc_url
+                  ? <a href={v.doc_url} target="_blank" rel="noopener"
+                      className="flex items-center gap-0.5 text-xs text-blue-500 hover:text-blue-700 w-8 flex-shrink-0">
+                      <ExternalLink size={10} strokeWidth={2} /> Ver
+                    </a>
+                  : <span className="w-8 flex-shrink-0" />
+                }
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      {(m.drive_license || m.drive_license_expiry) && (
-        <div className="px-4 py-3">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Conducción</p>
-          <Row label="Carnet" value={m.drive_license} expiry={m.drive_license_expiry} />
-        </div>
-      )}
     </div>
   )
 }

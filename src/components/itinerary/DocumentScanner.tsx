@@ -1,22 +1,66 @@
 'use client'
 import { useState } from 'react'
-import { Upload, Sparkles, X, FileText, AlertTriangle } from 'lucide-react'
+import { Upload, Sparkles, X, FileText, AlertTriangle, Plane, BedDouble, Ticket, Car, UtensilsCrossed } from 'lucide-react'
 
-const SYSTEM_PROMPT = [
-  'Eres un asistente que extrae datos de billetes y reservas de viaje.',
-  '',
-  'REGLAS IMPORTANTES:',
-  '1. Si el billete contiene IDA Y VUELTA, devuelve un ARRAY con DOS objetos separados: primero el vuelo de ida, luego el de vuelta.',
-  '2. Si es solo IDA, devuelve un ARRAY con UN objeto.',
-  '3. Cada vuelo puede tener MAXIMO 2 escalas (3 segmentos). Si hay mas, incluye solo los del trayecto de ese vuelo.',
-  '4. num_stops = numero de escalas (0=directo, 1=una escala, 2=dos escalas).',
-  '',
-  'ESTRUCTURA (devuelve siempre un array JSON):',
-  '[{"category":"flight","title":"Vuelo ORIGEN-DESTINO","event_date":"YYYY-MM-DD","time":"HH:MM","cost":0,"currency":"EUR","paid":false,"num_stops":1,"flight_segments":[{"from":"MAD","to":"DOH","flight_number":"QR6949","airline":"Qatar Airways","dep_time":"15:55","arr_time":"00:40","arr_date":"2026-12-25","terminal_dep":"4S","terminal_arr":""},{"from":"DOH","to":"NRT","flight_number":"QR806","airline":"Qatar Airways","dep_time":"02:15","arr_time":"17:55","arr_date":"2026-12-25","terminal_dep":"","terminal_arr":"2"}]}]',
-  '',
-  'Si hay precio en el billete, ponlo en el primer vuelo. El segundo vuelo lleva cost:0.',
-  'Fechas YYYY-MM-DD, horas HH:MM 24h. SOLO el array JSON sin explicaciones ni markdown.',
+const PROMPT_CLASSIFY = [
+  'Analiza este documento de viaje y responde SOLO con una de estas palabras, sin nada más:',
+  'flight   → si es un billete de avión',
+  'hotel    → si es una reserva de alojamiento (hotel, apartamento, villa, hostal, airbnb)',
+  'activity → si es una entrada o reserva de actividad, tour, excursión o restaurante',
+  'transport → si es un billete de tren, bus, ferry o alquiler de coche',
+  'Solo la palabra, sin puntos ni explicaciones.',
 ].join('\n')
+
+const PROMPT_FLIGHT = [
+  'Extrae los datos de este billete de avión. Devuelve SOLO un array JSON, sin markdown.',
+  '',
+  'REGLAS:',
+  '- Si contiene IDA Y VUELTA: array con DOS objetos (ida primero, vuelta segundo)',
+  '- Si es solo IDA: array con UN objeto',
+  '- Cada vuelo máximo 2 escalas (3 segmentos). num_stops = número de escalas',
+  '- El precio va en el primer vuelo. El vuelo de vuelta lleva cost:0',
+  '',
+  'ESTRUCTURA:',
+  '[{"category":"flight","title":"Vuelo MAD-NRT","event_date":"YYYY-MM-DD","time":"HH:MM","cost":0,"currency":"EUR","paid":false,"num_stops":1,"flight_segments":[{"from":"MAD","to":"DOH","flight_number":"QR6949","airline":"Qatar Airways","dep_time":"15:55","arr_time":"00:40","arr_date":"2026-12-25","terminal_dep":"4S","terminal_arr":""}]}]',
+  '',
+  'Fechas YYYY-MM-DD, horas HH:MM en 24h. SOLO el array JSON.',
+].join('\n')
+
+const PROMPT_HOTEL = [
+  'Extrae los datos de esta reserva de alojamiento. Devuelve SOLO un array JSON con UN objeto, sin markdown.',
+  '',
+  'ESTRUCTURA:',
+  '[{"category":"hotel","title":"Nombre del alojamiento","event_date":"YYYY-MM-DD","time":"15:00","checkout_date":"YYYY-MM-DD","cost":0,"currency":"EUR","paid":false,"location":"dirección o ciudad","confirmation_number":"número de reserva"}]',
+  '',
+  'event_date = fecha de CHECK-IN. checkout_date = fecha de CHECK-OUT.',
+  'time = hora de check-in si aparece, si no pon "15:00".',
+  'Fechas YYYY-MM-DD. SOLO el array JSON.',
+].join('\n')
+
+const PROMPT_ACTIVITY = [
+  'Extrae los datos de esta entrada o reserva de actividad. Devuelve SOLO un array JSON con UN objeto, sin markdown.',
+  '',
+  'ESTRUCTURA:',
+  '[{"category":"activity","title":"Nombre de la actividad","event_date":"YYYY-MM-DD","time":"HH:MM","cost":0,"currency":"EUR","paid":false,"location":"lugar"}]',
+  '',
+  'Fechas YYYY-MM-DD, horas HH:MM en 24h. SOLO el array JSON.',
+].join('\n')
+
+const PROMPT_TRANSPORT = [
+  'Extrae los datos de este billete de transporte. Devuelve SOLO un array JSON con UN objeto, sin markdown.',
+  '',
+  'ESTRUCTURA:',
+  '[{"category":"transport","title":"Descripción del transporte","event_date":"YYYY-MM-DD","time":"HH:MM","cost":0,"currency":"EUR","paid":false,"location":"origen → destino"}]',
+  '',
+  'Fechas YYYY-MM-DD, horas HH:MM en 24h. SOLO el array JSON.',
+].join('\n')
+
+const PROMPTS: Record<string, string> = {
+  flight: PROMPT_FLIGHT,
+  hotel: PROMPT_HOTEL,
+  activity: PROMPT_ACTIVITY,
+  transport: PROMPT_TRANSPORT,
+}
 
 type Props = {
   tripDay: string
@@ -26,9 +70,30 @@ type Props = {
 
 export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props) {
   const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
-  const [fileType, setFileType] = useState<'image' | 'pdf' | null>(null)
+
+  async function callHaiku(system: string, contentBlock: any, userText: string) {
+    const apiKey = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey!,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        system,
+        messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: userText }] }]
+      })
+    })
+    const data = await res.json()
+    return data.content?.find((b: any) => b.type === 'text')?.text?.trim() || ''
+  }
 
   async function handleFile(file: File) {
     setError('')
@@ -36,9 +101,9 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
     const isPDF = file.type === 'application/pdf'
     const isImage = file.type.startsWith('image/')
     if (!isPDF && !isImage) { setError('Solo se admiten imágenes o PDFs'); return }
-    setFileType(isPDF ? 'pdf' : 'image')
     if (isImage) setPreview(URL.createObjectURL(file))
     setLoading(true)
+
     try {
       const base64 = await new Promise<string>((res, rej) => {
         const r = new FileReader()
@@ -51,37 +116,39 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
         ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
         : { type: 'image', source: { type: 'base64', media_type: file.type, data: base64 } }
 
-      const apiKey = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey!,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1500,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: [
-            contentBlock,
-            { type: 'text', text: 'Extrae los datos. Fecha aproximada del viaje: ' + tripDay + '. Devuelve SOLO el array JSON.' }
-          ]}]
-        })
-      })
+      // Step 1: classify
+      setStatus('Identificando tipo de documento...')
+      const docType = await callHaiku(
+        PROMPT_CLASSIFY,
+        contentBlock,
+        'Clasifica este documento.'
+      )
+      const cleanType = docType.toLowerCase().replace(/[^a-z]/g, '')
+      const matchedType = ['flight', 'hotel', 'activity', 'transport'].find(t => cleanType.includes(t)) || 'activity'
 
-      const data = await response.json()
-      const text = data.content?.find((b: any) => b.type === 'text')?.text || ''
-      const clean = text.replace(/```json|```/g, '').trim()
+      const typeLabels: Record<string, string> = {
+        flight: 'vuelo', hotel: 'alojamiento', activity: 'actividad', transport: 'transporte'
+      }
+      setStatus(`Detectado: ${typeLabels[matchedType]}. Extrayendo datos...`)
+
+      // Step 2: extract with specific prompt
+      const extractPrompt = PROMPTS[matchedType]
+      const raw = await callHaiku(
+        extractPrompt,
+        contentBlock,
+        `Extrae los datos. Fecha aproximada del viaje: ${tripDay}.`
+      )
+
+      const clean = raw.replace(/```json|```/g, '').trim()
       const parsed = JSON.parse(clean)
       const result = Array.isArray(parsed) ? parsed : [parsed]
       onExtracted(result)
     } catch (e: any) {
-      setError('No se pudo analizar el documento. Inténtalo de nuevo.')
       console.error(e)
+      setError('No se pudo analizar el documento. Inténtalo de nuevo.')
     } finally {
       setLoading(false)
+      setStatus('')
     }
   }
 
@@ -109,7 +176,7 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
             {loading ? (
               <>
                 <div className="w-10 h-10 rounded-full border-2 border-violet-300 border-t-violet-600 animate-spin" />
-                <p className="text-sm text-slate-500">Analizando documento...</p>
+                <p className="text-sm text-slate-500 text-center">{status || 'Analizando...'}</p>
               </>
             ) : preview ? (
               <>
@@ -119,7 +186,7 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
             ) : (
               <>
                 <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center">
-                  {fileType === 'pdf' ? <FileText size={24} className="text-slate-400" /> : <Upload size={24} className="text-slate-400" />}
+                  <Upload size={24} className="text-slate-400" />
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium text-slate-700">Sube tu billete o reserva</p>
@@ -129,8 +196,16 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
             )}
           </label>
           <div className="flex flex-wrap gap-2">
-            {['✈️ Vuelos', '🏨 Hoteles', '🎡 Entradas', '🚌 Transporte', '🍽️ Restaurantes'].map(t => (
-              <span key={t} className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-lg">{t}</span>
+            {([
+              { label: 'Vuelos', Icon: Plane },
+              { label: 'Hoteles', Icon: BedDouble },
+              { label: 'Entradas', Icon: Ticket },
+              { label: 'Transporte', Icon: Car },
+              { label: 'Restaurantes', Icon: UtensilsCrossed },
+            ] as {label:string;Icon:any}[]).map(({ label, Icon }) => (
+              <span key={label} className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-lg">
+                <Icon size={11} strokeWidth={1.8} /> {label}
+              </span>
             ))}
           </div>
           {error && (
