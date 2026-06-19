@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import type { NextApiRequest, NextApiResponse } from 'next'
 
 const SYSTEM_PROMPT = `Eres un asistente que extrae datos de billetes, reservas y documentos de viaje.
 Analiza el documento y devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin texto adicional) con esta estructura según el tipo:
@@ -20,10 +20,12 @@ RESTAURANTE (category: "meal"):
 
 Reglas: fechas YYYY-MM-DD, horas HH:MM (24h), arr_date solo si llega otro día, num_stops=escalas. Devuelve SOLO el JSON.`
 
-export async function POST(req: NextRequest) {
-  try {
-    const { fileBase64, fileType, tripDay } = await req.json()
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } }
 
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') return res.status(405).end()
+  try {
+    const { fileBase64, fileType, tripDay } = req.body
     const contentBlock = fileType === 'application/pdf'
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileBase64 } }
       : { type: 'image', source: { type: 'base64', media_type: fileType, data: fileBase64 } }
@@ -41,7 +43,7 @@ export async function POST(req: NextRequest) {
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: [
           contentBlock,
-          { type: 'text', text: `Extrae los datos. Fecha aproximada del viaje: ${tripDay}. Devuelve solo el JSON.` }
+          { type: 'text', text: `Extrae los datos. Fecha aproximada: ${tripDay}. Devuelve solo el JSON.` }
         ]}]
       })
     })
@@ -50,9 +52,9 @@ export async function POST(req: NextRequest) {
     const text = data.content?.find((b: any) => b.type === 'text')?.text || ''
     const clean = text.replace(/```json|```/g, '').trim()
     const extracted = JSON.parse(clean)
-
-    return NextResponse.json({ ok: true, data: extracted })
+    res.status(200).json({ ok: true, data: extracted })
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e.message }, { status: 500 })
+    console.error('scan-document error:', e)
+    res.status(500).json({ ok: false, error: e.message })
   }
 }

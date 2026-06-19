@@ -18,7 +18,7 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
 
   return (
     <>
-      <div className="relative text-white shadow-lg overflow-hidden">
+      <div className="relative text-white shadow-lg overflow-hidden sticky top-0 z-30">
         {(trip as any).cover_image ? (
           <>
             <div className="absolute inset-0 bg-cover bg-center"

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
 import { formatDate, CAT_CONFIG, formatCurrency } from '@/lib/utils'
@@ -125,7 +125,7 @@ function SegmentForm({ seg, idx, total, onChange }: {
           <input className="input" value={seg.terminal_arr} onChange={e => onChange(idx, 'terminal_arr', e.target.value)} placeholder="T1" />
         </div>
         <div className="col-span-2">
-          <label className="label">📅 Fecha llegada (si diferente al día del vuelo)</label>
+          <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Fecha llegada (si diferente)</label>
           <input className="input" type="date" value={seg.arr_date} onChange={e => onChange(idx, 'arr_date', e.target.value)} />
         </div>
       </div>
@@ -161,7 +161,7 @@ function FlightTimeline({ segments, eventDay }: { segments: Segment[]; eventDay:
                 {seg.dep_time && <span className="flex items-center gap-1"><Plane size={11} strokeWidth={1.8} />{seg.dep_time?.slice(0,5)}{seg.terminal_dep ? ` · ${seg.terminal_dep}` : ''}</span>}
                 {seg.arr_time && (
                   <span className="inline-flex items-center gap-1.5">
-                    <span>🛬 {seg.arr_time?.slice(0,5)}{seg.terminal_arr ? ` · ${seg.terminal_arr}` : ''}</span>
+                    <span className="flex items-center gap-1"><PlaneLanding size={11} strokeWidth={1.8} /> {seg.arr_time?.slice(0,5)}{seg.terminal_arr ? ` · ${seg.terminal_arr}` : ''}</span>
                     {seg.arr_date && seg.arr_date !== eventDay && (
                       <span className="bg-orange-100 text-orange-600 border border-orange-200 font-bold px-1.5 py-0.5 rounded-md" style={{fontSize:'10px'}}>
                         +1 DÍA
@@ -409,24 +409,13 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     setSegments(prev => prev.map((s, i) => i === idx ? { ...s, [key]: val } : s))
   }
 
-  function handleExtracted(extracted: any) {
-    console.log('handleExtracted called with:', extracted)
+  function handleExtracted(data: any) {
     setShowScanner(false)
-    const flights = Array.isArray(extracted) ? extracted : [extracted]
-    const outbound = flights[0]
-    if (flights[1]) setPendingReturn(flights[1])
-    const day = outbound.event_date || selDay
-    setSelDay(day)
+    // Merge extracted data into form, set day
+    setForm({ ...EMPTY, ...data, event_date: data.event_date || selDay })
+    setSelDay(data.event_date || selDay)
     setViewMode('day')
-    setEditEvent(null)
-    const segs = (outbound.flight_segments || []).slice(0, 3)
-    const stops = Math.max(0, segs.length - 1)
-    setNumStops(stops)
-    setTimeout(() => {
-      setSegments(segs.length ? segs : [EMPTY_SEG()])
-      setForm({ ...EMPTY, ...outbound, event_date: day, num_stops: stops })
-      setShowForm(true)
-    }, 50)
+    setShowForm(true)
   }
 
   function loadReturnFlight() {
@@ -783,7 +772,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                   {/* Date — hide for accommodation (uses checkin date) */}
                   {!isAccom && (
                   <div>
-                    <label className="label">📅 Fecha del evento</label>
+                    <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Fecha del evento</label>
                     <input className="input" type="date" value={form.event_date || selDay || ''}
                       onChange={e => upd('event_date', e.target.value)}
                       min={trip.start_date} max={trip.end_date} />
@@ -821,7 +810,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       {/* Check-in */}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="label">📅 Check-in fecha</label>
+                          <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Check-in fecha</label>
                           <input className="input" type="date" value={form.accom_checkin_date} onChange={e => upd('accom_checkin_date', e.target.value)} />
                         </div>
                         <div>
@@ -832,7 +821,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       {/* Check-out */}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="label">📅 Check-out fecha</label>
+                          <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Check-out fecha</label>
                           <input className="input" type="date" value={form.accom_checkout_date} onChange={e => upd('accom_checkout_date', e.target.value)} />
                         </div>
                         <div>
@@ -843,17 +832,17 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       {/* Huéspedes */}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="label">👤 Adultos</label>
+                          <label className="label flex items-center gap-1"><Users size={11} strokeWidth={1.8} /> Adultos</label>
                           <input className="input" type="number" min="1" value={form.accom_guests_adults} onChange={e => upd('accom_guests_adults', e.target.value)} placeholder="2" />
                         </div>
                         <div>
-                          <label className="label">👶 Niños</label>
+                          <label className="label flex items-center gap-1"><Users size={11} strokeWidth={1.8} /> Niños</label>
                           <input className="input" type="number" min="0" value={form.accom_guests_children} onChange={e => upd('accom_guests_children', e.target.value)} placeholder="2" />
                         </div>
                       </div>
                       {/* Dirección */}
                       <div>
-                        <label className="label">📍 Dirección</label>
+                        <label className="label flex items-center gap-1"><MapPin size={11} strokeWidth={1.8} /> Dirección</label>
                         <input className="input" value={form.accom_address} onChange={e => upd('accom_address', e.target.value)} placeholder="Collins Avenue, Miami Beach 33141" />
                       </div>
                       {/* Web alojamiento */}
@@ -878,11 +867,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       {/* Teléfono + Nº habitación */}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="label">📞 Teléfono alojamiento</label>
+                          <label className="label flex items-center gap-1"><Phone size={11} strokeWidth={1.8} /> Teléfono</label>
                           <input className="input" type="tel" value={form.accom_phone} onChange={e => upd('accom_phone', e.target.value)} placeholder="+1 305 000 0000" />
                         </div>
                         <div>
-                          <label className="label">🔑 Nº habitación / apto.</label>
+                          <label className="label flex items-center gap-1"><Hash size={11} strokeWidth={1.8} /> Nº habitación / apto.</label>
                           <input className="input" value={form.accom_room} onChange={e => upd('accom_room', e.target.value)} placeholder="Apt. 4B, Room 302..." />
                         </div>
                       </div>
@@ -913,13 +902,13 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       {/* Parking info */}
                       {form.accom_parking_included && (
                       <div>
-                        <label className="label">🚗 Info parking (matrícula, altura, precio...)</label>
+                        <label className="label flex items-center gap-1"><Car size={11} strokeWidth={1.8} /> Info parking</label>
                         <input className="input" value={form.accom_parking_info} onChange={e => upd('accom_parking_info', e.target.value)} placeholder="Incluido · acceso por Collins Ave." />
                       </div>
                       )}
                       {/* Notas */}
                       <div>
-                        <label className="label">🔑 Acceso / Indicaciones de llegada</label>
+                        <label className="label flex items-center gap-1"><MapPin size={11} strokeWidth={1.8} /> Acceso / Indicaciones</label>
                         <textarea className="input" rows={2} value={form.accom_notes} onChange={e => upd('accom_notes', e.target.value)} placeholder="Recogida de llaves, código de acceso, parking..." />
                       </div>
                     </div>
@@ -977,7 +966,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
                   {/* Coste + Moneda + Pagado */}
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
-                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">💳 Pago</div>
+                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1"><CreditCard size={11} strokeWidth={1.8} /> Pago</div>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="col-span-2">
                         <label className="label">Importe</label>
@@ -1138,7 +1127,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                                 </div>
                                 <div className="flex gap-4 text-xs text-slate-500 font-mono">
                                   {e.dep_time && <span className="flex items-center gap-1"><Plane size={11} strokeWidth={1.8} /> {e.dep_time?.slice(0,5)}{e.terminal ? ` · ${e.terminal}` : ''}</span>}
-                                  {e.arr_time && <span>🛬 {e.arr_time?.slice(0,5)}{e.arr_terminal ? ` · ${e.arr_terminal}` : ''}</span>}
+                                  {e.arr_time && <span className="flex items-center gap-1"><PlaneLanding size={11} strokeWidth={1.8} /> {e.arr_time?.slice(0,5)}{e.arr_terminal ? ` · ${e.arr_terminal}` : ''}</span>}
                                 </div>
                               </div>
                             )}

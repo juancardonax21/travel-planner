@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Upload, Sparkles, X, FileText, AlertTriangle } from 'lucide-react'
+import { Upload, Sparkles, X, FileText, AlertTriangle, Plane, BedDouble, Ticket, Car, UtensilsCrossed } from 'lucide-react'
 
 const SYSTEM_PROMPT = [
   'Eres un asistente que extrae datos de billetes y reservas de viaje.',
@@ -76,7 +76,6 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
       const clean = text.replace(/```json|```/g, '').trim()
       const parsed = JSON.parse(clean)
       const result = Array.isArray(parsed) ? parsed : [parsed]
-      console.log('Calling onExtracted with:', JSON.stringify(result, null, 2))
       onExtracted(result)
     } catch (e: any) {
       setError('No se pudo analizar el documento. Inténtalo de nuevo.')
@@ -130,8 +129,16 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
             )}
           </label>
           <div className="flex flex-wrap gap-2">
-            {['✈️ Vuelos', '🏨 Hoteles', '🎡 Entradas', '🚌 Transporte', '🍽️ Restaurantes'].map(t => (
-              <span key={t} className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-lg">{t}</span>
+            {([
+              { label: 'Vuelos', Icon: Plane },
+              { label: 'Hoteles', Icon: BedDouble },
+              { label: 'Entradas', Icon: Ticket },
+              { label: 'Transporte', Icon: Car },
+              { label: 'Restaurantes', Icon: UtensilsCrossed },
+            ] as {label:string;Icon:any}[]).map(({ label, Icon }) => (
+              <span key={label} className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-lg">
+                <Icon size={11} strokeWidth={1.8} /> {label}
+              </span>
             ))}
           </div>
           {error && (
