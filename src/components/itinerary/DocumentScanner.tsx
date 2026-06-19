@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Upload, Sparkles, X, FileText, AlertTriangle } from 'lucide-react'
 
 // SYSTEM_PROMPT moved to server API route
@@ -124,7 +124,6 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
   const [error, setError] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
   const [fileType, setFileType] = useState<'image' | 'pdf' | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
 
   async function handleFile(file: File) {
     setError('')
@@ -190,10 +189,10 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
         {/* Body */}
         <div className="p-4 space-y-4">
           {/* Drop zone */}
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={loading}
-            className="w-full border-2 border-dashed border-slate-200 hover:border-violet-300 hover:bg-violet-50/50 rounded-2xl p-8 flex flex-col items-center gap-3 transition-all disabled:opacity-50">
+          <label
+            className="w-full border-2 border-dashed border-slate-200 hover:border-violet-300 hover:bg-violet-50/50 rounded-2xl p-8 flex flex-col items-center gap-3 transition-all cursor-pointer">
+            <input type="file" accept="image/*,.pdf" className="hidden"
+              onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
             {loading ? (
               <>
                 <div className="w-10 h-10 rounded-full border-2 border-violet-300 border-t-violet-600 animate-spin" />
@@ -218,10 +217,7 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
                 </div>
               </>
             )}
-          </button>
-
-          <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden"
-            onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+          </label>
 
           {/* Supported types */}
           <div className="flex flex-wrap gap-2">
