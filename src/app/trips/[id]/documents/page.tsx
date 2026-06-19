@@ -6,17 +6,16 @@ import TripNav from '@/components/layout/TripNav'
 import { daysUntil, formatDate } from '@/lib/utils'
 import {
   Plane, BedDouble, Shield, FileText, Car, FolderOpen,
-  CreditCard, Heart, User, AlertTriangle, CheckCircle2,
-  Clock, ExternalLink, ChevronDown, ChevronUp
+  AlertTriangle, CheckCircle2, Clock, ExternalLink,
+  Plus, X, Trash2, Ticket, UtensilsCrossed, Tag, ChevronDown, ChevronUp
 } from 'lucide-react'
 
-// ── Doc status helpers ────────────────────────────────────────────────────────
 type Status = 'ok' | 'warn' | 'expired' | 'missing'
 
 function getStatus(expiry?: string | null): Status {
   if (expiry === 'indefinido') return 'ok'
   if (!expiry) return 'missing'
-  const d = daysUntil(expiry ?? undefined)
+  const d = daysUntil(expiry)
   if (d === null) return 'missing'
   if (d < 0) return 'expired'
   if (d <= 90) return 'warn'
@@ -24,88 +23,113 @@ function getStatus(expiry?: string | null): Status {
 }
 
 function StatusIcon({ status }: { status: Status }) {
-  if (status === 'ok')      return <CheckCircle2 size={14} strokeWidth={2} className="text-emerald-500" />
-  if (status === 'warn')    return <Clock size={14} strokeWidth={2} className="text-amber-500" />
-  if (status === 'expired') return <AlertTriangle size={14} strokeWidth={2} className="text-red-500" />
-  return <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300" />
+  if (status === 'ok')      return <CheckCircle2 size={14} strokeWidth={2} className="text-emerald-500 flex-shrink-0" />
+  if (status === 'warn')    return <Clock size={14} strokeWidth={2} className="text-amber-500 flex-shrink-0" />
+  if (status === 'expired') return <AlertTriangle size={14} strokeWidth={2} className="text-red-500 flex-shrink-0" />
+  return <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300 flex-shrink-0" />
 }
 
-function statusLabel(status: Status, expiry?: string | null): string {
-  if (status === 'missing') return 'Sin datos'
-  const d = daysUntil(expiry ?? undefined)
-  if (status === 'expired') return 'Caducado'
-  if (status === 'warn') return `Caduca en ${d}d`
-  return `Hasta ${formatDate(expiry!, 'd MMM yyyy')}`
-}
-
-// ── Traveler doc row ──────────────────────────────────────────────────────────
-function TravelerDocRow({ label, number, expiry }: {
-  label: string; number?: string; expiry?: string
-}) {
-  const status = getStatus(expiry)
-  if (!number && !expiry) return null
-  return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-      <div className="flex items-center gap-2 min-w-0">
-        <StatusIcon status={status} />
-        <span className="text-sm text-slate-600">{label}</span>
-        {number && <span className="text-xs font-mono text-slate-400">{number}</span>}
-      </div>
-      <span className={`text-xs flex-shrink-0 ml-2 ${
-        status === 'expired' ? 'text-red-500' :
-        status === 'warn' ? 'text-amber-600' :
-        status === 'ok' ? 'text-emerald-600' : 'text-slate-300'
-      }`}>
-        {statusLabel(status, expiry)}
-      </span>
-    </div>
-  )
-}
-
-// ── Trip documents categories ─────────────────────────────────────────────────
 const TRIP_CATS: Record<string, { label: string; Icon: any; color: string; bg: string }> = {
-  vuelos:     { label: 'Vuelos',             Icon: Plane,      color: '#1D4ED8', bg: '#DBEAFE' },
-  hoteles:    { label: 'Alojamiento',        Icon: BedDouble,  color: '#065F46', bg: '#D1FAE5' },
-  seguros:    { label: 'Seguros',            Icon: Shield,     color: '#5B21B6', bg: '#EDE9FE' },
-  permisos:   { label: 'Visados / Permisos', Icon: FileText,   color: '#92400E', bg: '#FEF3C7' },
-  transporte: { label: 'Transporte',         Icon: Car,        color: '#991B1B', bg: '#FEE2E2' },
-  otros:      { label: 'Otros',              Icon: FolderOpen, color: '#374151', bg: '#F3F4F6' },
+  vuelos:     { label: 'Vuelos',             Icon: Plane,           color: '#1D4ED8', bg: '#DBEAFE' },
+  hoteles:    { label: 'Alojamiento',        Icon: BedDouble,       color: '#065F46', bg: '#D1FAE5' },
+  seguros:    { label: 'Seguros',            Icon: Shield,          color: '#5B21B6', bg: '#EDE9FE' },
+  transporte: { label: 'Transporte',         Icon: Car,             color: '#991B1B', bg: '#FEE2E2' },
+  actividades:{ label: 'Actividades',        Icon: Ticket,          color: '#92400E', bg: '#FEF3C7' },
+  otros:      { label: 'Otros',              Icon: Tag,             color: '#374151', bg: '#F3F4F6' },
+}
+
+type DocItem = {
+  id: string
+  name: string
+  category: string
+  url?: string
+  expiry?: string
+  source: 'trip' | 'member'
+  member_name?: string
 }
 
 export default function DocumentsPage({ params }: { params: { id: string } }) {
   const { id } = params
   const [trip, setTrip] = useState<Trip | null>(null)
-  const [travelers, setTravelers] = useState<any[]>([])
-  const [docs, setDocs] = useState<any[]>([])
-  const [openTraveler, setOpenTraveler] = useState<string | null>(null)
+  const [items, setItems] = useState<DocItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [form, setForm] = useState({ name: '', category: 'vuelos', url: '', expiry: '' })
 
-  useEffect(() => {
-    async function load() {
-      const [{ data: t }, { data: tm }, { data: d }] = await Promise.all([
-        supabase.from('trips').select('*').eq('id', id).single(),
-        supabase.from('trip_members')
-          .select('*, family_member:family_members(*)')
-          .eq('trip_id', id),
-        supabase.from('documents').select('*').eq('trip_id', id).order('category'),
-      ])
-      setTrip(t)
-      // Flatten: each item is the family_member with trip_member data merged
-      const members = (tm || []).map((item: any) => ({
-        ...item.family_member,
-        _trip_member_id: item.id,
-        travel_ins_number: item.travel_ins_number,
-        travel_ins_expiry: item.travel_ins_expiry,
-        travel_ins_phone: item.travel_ins_phone,
-        cancel_ins_number: item.cancel_ins_number,
-      }))
-      setTravelers(members)
-      setDocs(d || [])
-      if (members.length) setOpenTraveler(members[0].id)
-      setLoading(false)
+  useEffect(() => { load() }, [id])
+
+  async function load() {
+    const [{ data: t }, { data: md }, { data: d }] = await Promise.all([
+      supabase.from('trips').select('*').eq('id', id).single(),
+      supabase.from('member_documents')
+        .select('*, family_member:family_members(name)')
+        .eq('trip_id', id)
+        .eq('type', 'ticket'),
+      supabase.from('documents').select('*').eq('trip_id', id).order('category'),
+    ])
+    setTrip(t)
+
+    const allItems: DocItem[] = []
+
+    // Traveler tickets → vuelos
+    ;(md || []).forEach((doc: any) => {
+      if (doc.file_url) {
+        const name = doc.family_member?.name?.split(' ')[0] || 'Viajero'
+        allItems.push({
+          id: doc.id,
+          name: `${doc.label || 'Billete'} — ${name}`,
+          category: 'vuelos',
+          url: doc.file_url,
+          source: 'member',
+          member_name: name,
+        })
+      }
+    })
+
+    // Trip documents
+    ;(d || []).forEach((doc: any) => {
+      allItems.push({
+        id: doc.id,
+        name: doc.name,
+        category: doc.category || 'otros',
+        url: doc.url,
+        expiry: doc.expiry,
+        source: 'trip',
+      })
+    })
+
+    setItems(allItems)
+    setLoading(false)
+  }
+
+  async function saveDoc() {
+    if (!form.name.trim()) return
+    const { data: newDoc } = await supabase.from('documents').insert({
+      trip_id: id,
+      name: form.name,
+      category: form.category,
+      url: form.url || null,
+      expiry: form.expiry || null,
+    }).select().single()
+    if (newDoc) {
+      setItems(prev => [...prev, {
+        id: newDoc.id, name: newDoc.name, category: newDoc.category,
+        url: newDoc.url, expiry: newDoc.expiry, source: 'trip'
+      }])
     }
-    load()
-  }, [id])
+    setForm({ name: '', category: 'vuelos', url: '', expiry: '' })
+    setShowForm(false)
+  }
+
+  async function deleteDoc(item: DocItem) {
+    if (item.source === 'trip') {
+      await supabase.from('documents').delete().eq('id', item.id)
+    } else {
+      await supabase.from('member_documents').delete().eq('id', item.id)
+    }
+    setItems(prev => prev.filter(d => d.id !== item.id))
+  }
 
   if (loading || !trip) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -113,177 +137,161 @@ export default function DocumentsPage({ params }: { params: { id: string } }) {
     </div>
   )
 
-  // Overall alert count
-  const allStatuses = travelers.flatMap(tv => [
-    getStatus(tv.passport_expiry), getStatus(tv.esta_expiry),
-    getStatus(tv.tse_expiry), getStatus(tv.health_ins_expiry),
-    getStatus(tv.drive_license_expiry),
-  ])
-  const alertCount = allStatuses.filter(s => s === 'warn' || s === 'expired').length
+  const totalDocs = items.length
+  const alerts = items.filter(d => d.expiry && (getStatus(d.expiry) === 'warn' || getStatus(d.expiry) === 'expired')).length
 
   return (
     <div className="min-h-screen bg-slate-50">
       <TripNav trip={trip} active="documents" />
       <div className="max-w-4xl mx-auto px-4 pb-12">
 
-        {/* Alert banner */}
-        {alertCount > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-6 flex items-center gap-3">
+        {alerts > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-6 flex items-center gap-2 mt-4">
             <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" strokeWidth={2} />
             <p className="text-sm text-amber-700">
-              <strong>{alertCount} documento{alertCount > 1 ? 's' : ''}</strong> próximos a caducar o caducados — revisa las fichas de los viajeros
+              <strong>{alerts} documento{alerts > 1 ? 's' : ''}</strong> próximos a caducar o caducados
             </p>
           </div>
         )}
 
-        {/* ── SECTION 1: Traveler documents ── */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
-              <User size={14} strokeWidth={1.8} className="text-blue-600" />
-            </div>
-            <h3 className="font-semibold text-slate-700">Documentos personales</h3>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4 mt-4">
+          <div className="flex items-center gap-2">
+            <FolderOpen size={18} className="text-slate-400" strokeWidth={1.8} />
+            <h2 className="font-semibold text-slate-800">Documentos del viaje</h2>
+            {totalDocs > 0 && (
+              <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{totalDocs}</span>
+            )}
           </div>
+          <button onClick={() => setShowForm(v => !v)}
+            className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl border font-medium transition-colors ${
+              showForm ? 'bg-blue-600 text-white border-blue-600' : 'btn-primary'
+            }`}>
+            <Plus size={14} strokeWidth={2.5} /> Añadir
+          </button>
+        </div>
 
-          <div className="space-y-2">
-            {travelers.map(tv => {
-              const isOpen = openTraveler === tv.id
-              const initials = tv.name.split(' ').map((n: string) => n[0]).slice(0,2).join('').toUpperCase()
-              const tvStatuses = [
-                getStatus(tv.passport_expiry), getStatus(tv.esta_expiry),
-                getStatus(tv.tse_expiry), getStatus(tv.health_ins_expiry),
-              ]
-              const tvAlert = tvStatuses.some(s => s === 'warn' || s === 'expired')
-              const tvMissing = tvStatuses.filter(s => s === 'missing').length
+        {/* Add form */}
+        {showForm && (
+          <div className="card p-4 mb-4 space-y-3 border-blue-200 bg-blue-50/30">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="label">Nombre del documento *</label>
+                <input className="input" placeholder="ej: Confirmación vuelo TAP"
+                  value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} />
+              </div>
+              <div>
+                <label className="label">Categoría</label>
+                <select className="input" value={form.category}
+                  onChange={e => setForm(f => ({...f, category: e.target.value}))}>
+                  {Object.entries(TRIP_CATS).map(([k, v]) => (
+                    <option key={k} value={k}>{v.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Caducidad <span className="text-slate-300 font-normal">(opcional)</span></label>
+                <input className="input" type="date" value={form.expiry}
+                  onChange={e => setForm(f => ({...f, expiry: e.target.value}))} />
+              </div>
+              <div className="col-span-2">
+                <label className="label flex items-center gap-1"><ExternalLink size={11} strokeWidth={1.8} /> URL / Enlace</label>
+                <input className="input font-mono text-xs" placeholder="https://drive.google.com/..."
+                  value={form.url} onChange={e => setForm(f => ({...f, url: e.target.value}))} />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={saveDoc} className="btn-primary flex-1 py-2 text-sm">Guardar</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary px-4 text-sm">Cancelar</button>
+            </div>
+          </div>
+        )}
 
+        {/* Categories */}
+        {totalDocs === 0 && !showForm ? (
+          <div className="card p-10 text-center">
+            <FolderOpen size={36} className="mx-auto text-slate-200 mb-3" strokeWidth={1} />
+            <p className="text-slate-400 text-sm font-medium">Sin documentos todavía</p>
+            <p className="text-slate-300 text-xs mt-1">Añade billetes, reservas, seguros o cualquier enlace relevante</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {Object.entries(TRIP_CATS).map(([cat, cfg]) => {
+              const catItems = items.filter(d => d.category === cat)
+              if (!catItems.length) return null
               return (
-                <div key={tv.id} className="card overflow-hidden">
-                  <button className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors text-left"
-                    onClick={() => setOpenTraveler(isOpen ? null : tv.id)}>
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                      {initials}
+                <div key={cat} className="card overflow-hidden">
+                  {/* Category header — collapsible */}
+                  <button
+                    onClick={() => setCollapsed(c => ({ ...c, [cat]: !c[cat] }))}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 border-b border-slate-100 hover:brightness-95 transition-all"
+                    style={{ background: cfg.bg + '60' }}>
+                    <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+                      style={{ background: cfg.bg }}>
+                      <cfg.Icon size={13} strokeWidth={1.8} style={{ color: cfg.color }} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-800 text-sm">{tv.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {tvAlert && <span className="text-xs text-amber-600 flex items-center gap-1"><AlertTriangle size={10} /> Revisar</span>}
-                        {!tvAlert && tvMissing === 0 && <span className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle2 size={10} /> Todo OK</span>}
-                        {!tvAlert && tvMissing > 0 && <span className="text-xs text-slate-400">{tvMissing} sin rellenar</span>}
-                      </div>
-                    </div>
-                    {isOpen ? <ChevronUp size={15} className="text-slate-300 flex-shrink-0" /> : <ChevronDown size={15} className="text-slate-300 flex-shrink-0" />}
+                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: cfg.color }}>
+                      {cfg.label}
+                    </span>
+                    <span className="text-xs bg-white/60 px-1.5 py-0.5 rounded-full ml-1" style={{ color: cfg.color }}>
+                      {catItems.length}
+                    </span>
+                    <span className="ml-auto text-slate-400">
+                      {collapsed[cat]
+                        ? <ChevronDown size={14} strokeWidth={2} />
+                        : <ChevronUp size={14} strokeWidth={2} />
+                      }
+                    </span>
                   </button>
-
-                  {isOpen && (
-                    <div className="border-t border-slate-100 divide-y divide-slate-50">
-                      {/* Identity */}
-                      <div className="px-4 py-3">
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <CreditCard size={11} strokeWidth={2} className="text-blue-400" />
-                          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Viaje</span>
-                        </div>
-                        <TravelerDocRow label="Pasaporte" number={tv.passport_number} expiry={tv.passport_expiry} />
-                        <TravelerDocRow label="ESTA" number={tv.esta_number} expiry={tv.esta_expiry} />
-                      </div>
-                      {/* Health */}
-                      <div className="px-4 py-3">
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <Heart size={11} strokeWidth={2} className="text-rose-400" />
-                          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Sanidad</span>
-                        </div>
-                        <TravelerDocRow label="TSE" number={tv.tse_number} expiry={tv.tse_expiry} />
-                        <TravelerDocRow label="Seguro médico viaje" number={tv.health_ins_number} expiry={tv.health_ins_expiry} />
-                        {tv.health_ins_phone && (
-                          <div className="flex items-center gap-2 py-1 text-xs text-slate-500">
-                            <span className="text-slate-400">Emergencias:</span>
-                            <a href={`tel:${tv.health_ins_phone}`} className="text-blue-600 hover:underline font-mono">
-                              {tv.health_ins_phone}
-                            </a>
+                  {/* Items */}
+                  {!collapsed[cat] && <div className="divide-y divide-slate-50">
+                    {catItems.map(item => {
+                      const status = item.expiry ? getStatus(item.expiry) : 'missing'
+                      return (
+                        <div key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+                          {item.expiry
+                            ? <StatusIcon status={status} />
+                            : <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-200 flex-shrink-0" />
+                          }
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-slate-700 font-medium truncate">{item.name}</p>
+                            {item.expiry && (
+                              <p className={`text-xs mt-0.5 ${
+                                status === 'expired' ? 'text-red-500' :
+                                status === 'warn' ? 'text-amber-600' : 'text-slate-400'
+                              }`}>
+                                {status === 'expired' ? 'Caducado' :
+                                 status === 'warn' ? `Caduca ${formatDate(item.expiry, 'd MMM yyyy')}` :
+                                 `Hasta ${formatDate(item.expiry, 'd MMM yyyy')}`}
+                              </p>
+                            )}
+                            {item.source === 'member' && (
+                              <span className="text-xs text-slate-300">Billete individual</span>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      {/* Driving */}
-                      {(tv.drive_license || tv.drive_license_expiry) && (
-                        <div className="px-4 py-3">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <Car size={11} strokeWidth={2} className="text-slate-400" />
-                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Conducción</span>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {item.url && (
+                              <a href={item.url} target="_blank" rel="noopener"
+                                className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg hover:bg-blue-100 transition-colors">
+                                <ExternalLink size={11} strokeWidth={2} /> Abrir
+                              </a>
+                            )}
+                            {item.source === 'trip' && (
+                              <button onClick={() => deleteDoc(item)}
+                                className="text-slate-300 hover:text-red-500 p-1 rounded transition-colors">
+                                <Trash2 size={13} strokeWidth={1.8} />
+                              </button>
+                            )}
                           </div>
-                          <TravelerDocRow label="Carnet conducir" number={tv.drive_license} expiry={tv.drive_license_expiry} />
                         </div>
-                      )}
-                    </div>
-                  )}
+                      )
+                    })}
+                  </div>}
                 </div>
               )
             })}
           </div>
-        </div>
-
-        {/* ── SECTION 2: Trip documents ── */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                <FolderOpen size={14} strokeWidth={1.8} className="text-slate-500" />
-              </div>
-              <h3 className="font-semibold text-slate-700">Documentos del viaje</h3>
-            </div>
-            <button className="btn-secondary text-xs flex items-center gap-1.5 px-3 py-1.5">
-              + Añadir
-            </button>
-          </div>
-
-          {docs.length === 0 ? (
-            <div className="card p-8 text-center">
-              <FolderOpen size={32} className="mx-auto text-slate-200 mb-2" strokeWidth={1} />
-              <p className="text-slate-400 text-sm">Sin documentos del viaje</p>
-              <p className="text-slate-300 text-xs mt-1">Seguros, billetes adicionales, permisos...</p>
-            </div>
-          ) : (
-            Object.entries(TRIP_CATS).map(([cat, cfg]) => {
-              const catDocs = docs.filter(d => d.category === cat)
-              if (!catDocs.length) return null
-              const { Icon } = cfg
-              return (
-                <div key={cat} className="mb-4">
-                  <div className="flex items-center gap-2 mb-2 px-1">
-                    <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: cfg.bg }}>
-                      <Icon size={12} strokeWidth={1.8} style={{ color: cfg.color }} />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{cfg.label}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {catDocs.map(doc => {
-                      const status = getStatus(doc.expiry)
-                      return (
-                        <div key={doc.id} className="card p-3 flex items-center gap-3 border-l-4"
-                          style={{ borderLeftColor: cfg.color }}>
-                          <StatusIcon status={status} />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-slate-800 text-sm">{doc.name}</p>
-                            {doc.expiry && (
-                              <p className={`text-xs mt-0.5 ${
-                                status === 'expired' ? 'text-red-500' :
-                                status === 'warn' ? 'text-amber-600' : 'text-slate-400'
-                              }`}>{statusLabel(status, doc.expiry)}</p>
-                            )}
-                          </div>
-                          {doc.url && (
-                            <a href={doc.url} target="_blank" rel="noopener"
-                              className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-1.5 rounded-xl hover:bg-blue-100 transition-colors flex-shrink-0">
-                              <ExternalLink size={11} strokeWidth={2} /> Abrir
-                            </a>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
+        )}
       </div>
     </div>
   )

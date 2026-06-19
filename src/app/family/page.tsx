@@ -56,8 +56,8 @@ const DOC_SLOTS = [
   { type: 'dni',           label: 'DNI' },
   { type: 'tse',           label: 'TSE' },
   { type: 'health_ins',    label: 'Seguro médico' },
-  { type: 'drive_license', label: 'Carnet de conducir' },
   { type: 'vaccines',      label: 'Vacunas / Certificados' },
+  { type: 'drive_license', label: 'Carnet de conducir' },
 ]
 
 function MemberDocs({ memberId }: { memberId: string }) {
@@ -96,7 +96,7 @@ function MemberDocs({ memberId }: { memberId: string }) {
   return (
     <div className="px-4 py-3 border-t border-slate-50">
       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
-        Documentos (enlaces)
+        Documentos personales
       </p>
       <div className="space-y-2">
         {DOC_SLOTS.map(slot => {
