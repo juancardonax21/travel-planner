@@ -6,7 +6,8 @@ import TripNav from '@/components/layout/TripNav'
 import { daysUntil, formatDate } from '@/lib/utils'
 import {
   Users, UserPlus, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2,
-  Heart, CreditCard, Car, Phone, ExternalLink, X
+  Heart, CreditCard, Car, Phone, ExternalLink, X,
+  FileText, Loader2, Ticket,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -37,6 +38,82 @@ function DocBadge({ label, status }: { label: string; status: DocStatus }) {
       {status === 'missing' && <div className="w-2 h-2 rounded-full border border-current" />}
       {label}
     </span>
+  )
+}
+
+
+// ── Tickets per traveler per trip (URL-based) ────────────────────
+function TravelerTickets({ memberId, tripId }: { memberId: string; tripId: string }) {
+  const [docs, setDocs] = useState<any[]>([])
+  const [adding, setAdding] = useState(false)
+  const [newUrl, setNewUrl] = useState('')
+  const [newLabel, setNewLabel] = useState('')
+
+  useEffect(() => {
+    supabase.from('member_documents')
+      .select('*').eq('family_member_id', memberId).eq('trip_id', tripId).eq('type', 'ticket')
+      .then(({ data }) => setDocs((data || []).filter((d: any) => d?.file_url)))
+  }, [memberId, tripId])
+
+  async function save() {
+    if (!newUrl.trim()) return
+    const { data: newDoc } = await supabase.from('member_documents').insert({
+      family_member_id: memberId, trip_id: tripId, type: 'ticket',
+      label: newLabel || 'Billete', file_url: newUrl.trim(), file_name: newLabel || 'Billete',
+    }).select().single()
+    if (newDoc) setDocs(prev => [...prev, newDoc])
+    setNewUrl(''); setNewLabel(''); setAdding(false)
+  }
+
+  async function remove(doc: any) {
+    await supabase.from('member_documents').delete().eq('id', doc.id)
+    setDocs(prev => prev.filter((d: any) => d.id !== doc.id))
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-slate-100 px-4 pb-3">
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1">
+        <Ticket size={11} strokeWidth={2} /> Billetes
+      </p>
+      <div className="space-y-1.5">
+        {docs.map((doc: any) => (
+          <div key={doc.id} className="flex items-center gap-2">
+            <a href={doc.file_url} target="_blank" rel="noopener"
+              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-blue-600 flex-1 truncate transition-colors">
+              <FileText size={11} strokeWidth={1.8} className="flex-shrink-0 text-slate-400" />
+              <span className="truncate">{doc.label || 'Billete'}</span>
+              <ExternalLink size={10} strokeWidth={1.8} className="ml-auto flex-shrink-0 text-slate-300" />
+            </a>
+            <button onClick={() => remove(doc)} className="text-slate-300 hover:text-red-500 transition-colors flex-shrink-0">
+              <X size={13} strokeWidth={2} />
+            </button>
+          </div>
+        ))}
+        {adding ? (
+          <div className="space-y-1.5 bg-slate-50 rounded-xl p-2">
+            <input className="input text-xs py-1.5" placeholder="Nombre (ej: Billete Juan)"
+              value={newLabel} onChange={e => setNewLabel(e.target.value)} />
+            <input className="input text-xs py-1.5 font-mono" placeholder="URL de Google Drive..."
+              value={newUrl} onChange={e => setNewUrl(e.target.value)} />
+            <div className="flex gap-1.5">
+              <button onClick={save}
+                className="flex-1 bg-emerald-600 text-white text-xs py-1.5 rounded-lg hover:bg-emerald-700 transition-colors">
+                Guardar
+              </button>
+              <button onClick={() => { setAdding(false); setNewUrl(''); setNewLabel('') }}
+                className="px-3 text-slate-400 hover:text-slate-600 text-xs py-1.5 rounded-lg hover:bg-slate-200 transition-colors">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setAdding(true)}
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-600 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 px-3 py-1.5 rounded-xl transition-colors">
+            <ExternalLink size={11} strokeWidth={2} /> Añadir enlace
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -298,6 +375,7 @@ export default function TravelersPage({ params }: { params: { id: string } }) {
                       </div>
                     )}
                   </div>
+                  <TravelerTickets memberId={(tm as any).family_member?.id || (tm as any).id} tripId={id} />
                 </div>
               )}
             </div>

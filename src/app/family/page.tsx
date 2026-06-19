@@ -6,7 +6,8 @@ import type { FamilyMember } from '@/types'
 import { daysUntil, formatDate } from '@/lib/utils'
 import {
   Users, Plus, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2,
-  User, Mail, Phone, CreditCard, Heart, Car, Pencil, Trash2, X, Save
+  User, Mail, Phone, CreditCard, Heart, Car, Pencil, Trash2, X, Save,
+  FileText, ExternalLink
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -48,6 +49,108 @@ const EMPTY: Partial<FamilyMember> = {
   health_ins_number: '', health_ins_expiry: '', health_ins_phone: '',
   drive_license: '', drive_license_expiry: '',
 }
+
+// ── Document links per member ─────────────────────────────────────
+const DOC_SLOTS = [
+  { type: 'passport',      label: 'Pasaporte' },
+  { type: 'dni',           label: 'DNI' },
+  { type: 'tse',           label: 'TSE' },
+  { type: 'health_ins',    label: 'Seguro médico' },
+  { type: 'drive_license', label: 'Carnet de conducir' },
+]
+
+function MemberDocs({ memberId }: { memberId: string }) {
+  const [docs, setDocs] = useState<any[]>([])
+  const [editing, setEditing] = useState<string | null>(null)
+  const [url, setUrl] = useState('')
+
+  useEffect(() => {
+    supabase.from('member_documents')
+      .select('*').eq('family_member_id', memberId).is('trip_id', null)
+      .then(({ data }) => setDocs(data || []))
+  }, [memberId])
+
+  async function save(type: string, label: string) {
+    if (!url.trim()) { setEditing(null); return }
+    const existing = docs.find(d => d.type === type)
+    if (existing) {
+      await supabase.from('member_documents').update({ file_url: url.trim() }).eq('id', existing.id)
+      setDocs(prev => prev.map(d => d.type === type ? { ...d, file_url: url.trim() } : d))
+    } else {
+      const { data: newDoc } = await supabase.from('member_documents').insert({
+        family_member_id: memberId, trip_id: null, type, label, file_url: url.trim(), file_name: label,
+      }).select().single()
+      if (newDoc) setDocs(prev => [...prev, newDoc])
+    }
+    setUrl(''); setEditing(null)
+  }
+
+  async function remove(type: string) {
+    const doc = docs.find(d => d.type === type)
+    if (!doc) return
+    await supabase.from('member_documents').delete().eq('id', doc.id)
+    setDocs(prev => prev.filter(d => d.type !== type))
+  }
+
+  return (
+    <div className="px-4 py-3 border-t border-slate-50">
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+        Documentos (enlaces)
+      </p>
+      <div className="space-y-2">
+        {DOC_SLOTS.map(slot => {
+          const doc = docs.find(d => d.type === slot.type)
+          const isEditing = editing === slot.type
+          return (
+            <div key={slot.type}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-slate-600 flex-1">{slot.label}</span>
+                {doc && !isEditing ? (
+                  <div className="flex items-center gap-1.5">
+                    <a href={doc.file_url} target="_blank" rel="noopener"
+                      className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100 transition-colors">
+                      <ExternalLink size={10} strokeWidth={2} /> Ver
+                    </a>
+                    <button onClick={() => { setEditing(slot.type); setUrl(doc.file_url) }}
+                      className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors">
+                      ↻
+                    </button>
+                    <button onClick={() => remove(slot.type)}
+                      className="text-slate-300 hover:text-red-500 transition-colors">
+                      <X size={11} strokeWidth={2} />
+                    </button>
+                  </div>
+                ) : !isEditing ? (
+                  <button onClick={() => { setEditing(slot.type); setUrl('') }}
+                    className="text-xs text-slate-400 hover:text-violet-600 bg-slate-50 hover:bg-violet-50 border border-slate-200 hover:border-violet-200 px-2 py-1 rounded-lg transition-colors flex items-center gap-1">
+                    <ExternalLink size={10} strokeWidth={2} /> Añadir enlace
+                  </button>
+                ) : null}
+              </div>
+              {isEditing && (
+                <div className="mt-1.5 flex gap-1.5">
+                  <input className="input text-xs py-1.5 font-mono flex-1"
+                    placeholder="https://drive.google.com/..."
+                    value={url} onChange={e => setUrl(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && save(slot.type, slot.label)} />
+                  <button onClick={() => save(slot.type, slot.label)}
+                    className="bg-blue-600 text-white text-xs px-3 rounded-xl hover:bg-blue-700 transition-colors">
+                    OK
+                  </button>
+                  <button onClick={() => { setEditing(null); setUrl('') }}
+                    className="text-slate-400 hover:text-slate-600 text-xs px-2">
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 
 export default function FamilyPage() {
   const router = useRouter()
