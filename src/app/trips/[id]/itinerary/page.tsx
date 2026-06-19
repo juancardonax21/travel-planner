@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Map, X, Plane, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
 import { formatDate, CAT_CONFIG, formatCurrency } from '@/lib/utils'
@@ -8,6 +8,7 @@ import { fetchWeather, weatherEmoji, type WeatherDay } from '@/lib/weather'
 import TripNav from '@/components/layout/TripNav'
 import dynamic from 'next/dynamic'
 import WeekView from '@/components/itinerary/WeekView'
+import DocumentScanner from '@/components/itinerary/DocumentScanner'
 
 const DayMap = dynamic(() => import('@/components/map/DayMap'), { ssr: false })
 
@@ -208,7 +209,7 @@ function checkTravelDocs(travelers: any[], tripEndDate: string, destination: str
     if (isUSA && !tv.esta_number) issues.push('Sin ESTA')
     else if (isUSA && tv.esta_expiry && tv.esta_expiry < tripEndDate) issues.push('ESTA caducada')
   })
-  const unique = issues.filter((v, i, a) => a.indexOf(v) === i)
+  const unique = [...new Set(issues)]
   if (unique.length === 0) return { status: 'ok' as const, msg: 'Docs OK' }
   if (unique.some(i => i.startsWith('Sin '))) return { status: 'missing' as const, msg: unique[0] }
   return { status: 'warn' as const, msg: unique[0] }
@@ -365,6 +366,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const [segments, setSegments] = useState<Segment[]>([EMPTY_SEG()])
   const [saving, setSaving] = useState(false)
   const [viewMode, setViewMode] = useState<'week'|'day'>('week')
+  const [showScanner, setShowScanner] = useState(false)
 
   useEffect(() => { loadData() }, [id])
 
@@ -404,6 +406,15 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
   function updateSegment(idx: number, key: keyof Segment, val: string) {
     setSegments(prev => prev.map((s, i) => i === idx ? { ...s, [key]: val } : s))
+  }
+
+  function handleExtracted(data: any) {
+    setShowScanner(false)
+    // Merge extracted data into form, set day
+    setForm({ ...EMPTY, ...data, event_date: data.event_date || selDay })
+    setSelDay(data.event_date || selDay)
+    setViewMode('day')
+    setShowForm(true)
   }
 
   function openNew() {
@@ -544,6 +555,10 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
         {/* View toggle + day picker */}
         <div className="flex items-center justify-between mb-2 pt-2">
+          <button onClick={() => setShowScanner(true)}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border border-violet-200 text-violet-600 hover:bg-violet-50 transition-colors font-medium">
+            <Sparkles size={14} strokeWidth={2} /> Escanear billete
+          </button>
           <div className="flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
             <button onClick={() => setViewMode('week')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
@@ -559,9 +574,15 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
             </button>
           </div>
           {viewMode === 'day' && (
-            <button onClick={openNew} className="btn-primary text-sm flex items-center gap-1.5">
-              <Plus size={14} strokeWidth={2.5} /> Añadir
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => setShowScanner(true)}
+                className="btn-secondary text-sm flex items-center gap-1.5 border-violet-200 text-violet-600 hover:bg-violet-50">
+                <Sparkles size={14} strokeWidth={2} /> IA
+              </button>
+              <button onClick={openNew} className="btn-primary text-sm flex items-center gap-1.5">
+                <Plus size={14} strokeWidth={2.5} /> Añadir
+              </button>
+            </div>
           )}
         </div>
 
@@ -677,12 +698,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
             {/* ── CHECKOUT CHIP ── */}
             {selDay && (() => {
-              const checkouts = events.filter(e => {
-                const ea = e as any
-                return e.category === 'hotel' &&
-                  ea.accom_checkout_date &&
-                  String(ea.accom_checkout_date).slice(0,10) === selDay
-              })
+              const checkouts = events.filter(e =>
+                e.category === 'hotel' &&
+                e.accom_checkout_date &&
+                String(e.accom_checkout_date).slice(0,10) === selDay
+              )
               if (!checkouts.length) return null
               return (
                 <>
