@@ -2,6 +2,22 @@
 import { useState } from 'react'
 import { Upload, Sparkles, X, FileText, AlertTriangle } from 'lucide-react'
 
+const SYSTEM_PROMPT = [
+  'Eres un asistente que extrae datos de billetes y reservas de viaje.',
+  '',
+  'REGLAS IMPORTANTES:',
+  '1. Si el billete contiene IDA Y VUELTA, devuelve un ARRAY con DOS objetos separados: primero el vuelo de ida, luego el de vuelta.',
+  '2. Si es solo IDA, devuelve un ARRAY con UN objeto.',
+  '3. Cada vuelo puede tener MAXIMO 2 escalas (3 segmentos). Si hay mas, incluye solo los del trayecto de ese vuelo.',
+  '4. num_stops = numero de escalas (0=directo, 1=una escala, 2=dos escalas).',
+  '',
+  'ESTRUCTURA (devuelve siempre un array JSON):',
+  '[{"category":"flight","title":"Vuelo ORIGEN-DESTINO","event_date":"YYYY-MM-DD","time":"HH:MM","cost":0,"currency":"EUR","paid":false,"num_stops":1,"flight_segments":[{"from":"MAD","to":"DOH","flight_number":"QR6949","airline":"Qatar Airways","dep_time":"15:55","arr_time":"00:40","arr_date":"2026-12-25","terminal_dep":"4S","terminal_arr":""},{"from":"DOH","to":"NRT","flight_number":"QR806","airline":"Qatar Airways","dep_time":"02:15","arr_time":"17:55","arr_date":"2026-12-25","terminal_dep":"","terminal_arr":"2"}]}]',
+  '',
+  'Si hay precio en el billete, ponlo en el primer vuelo. El segundo vuelo lleva cost:0.',
+  'Fechas YYYY-MM-DD, horas HH:MM 24h. SOLO el array JSON sin explicaciones ni markdown.',
+].join('\n')
+
 type Props = {
   tripDay: string
   onExtracted: (data: any) => void
@@ -30,14 +46,38 @@ export default function DocumentScanner({ tripDay, onExtracted, onClose }: Props
         r.onerror = () => rej(new Error('Error leyendo archivo'))
         r.readAsDataURL(file)
       })
-      const response = await fetch('/api/scan-document', {
+
+      const contentBlock = isPDF
+        ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
+        : { type: 'image', source: { type: 'base64', media_type: file.type, data: base64 } }
+
+      const apiKey = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileBase64: base64, fileType: file.type, tripDay })
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey!,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1500,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: [
+            contentBlock,
+            { type: 'text', text: 'Extrae los datos. Fecha aproximada del viaje: ' + tripDay + '. Devuelve SOLO el array JSON.' }
+          ]}]
+        })
       })
-      const result = await response.json()
-      if (!result.ok) throw new Error(result.error || 'Error del servidor')
-      onExtracted(result.data)
+
+      const data = await response.json()
+      const text = data.content?.find((b: any) => b.type === 'text')?.text || ''
+      const clean = text.replace(/```json|```/g, '').trim()
+      const parsed = JSON.parse(clean)
+      const result = Array.isArray(parsed) ? parsed : [parsed]
+      console.log('Calling onExtracted with:', JSON.stringify(result, null, 2))
+      onExtracted(result)
     } catch (e: any) {
       setError('No se pudo analizar el documento. Inténtalo de nuevo.')
       console.error(e)

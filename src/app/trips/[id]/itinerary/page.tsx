@@ -367,6 +367,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const [saving, setSaving] = useState(false)
   const [viewMode, setViewMode] = useState<'week'|'day'>('week')
   const [showScanner, setShowScanner] = useState(false)
+  const [pendingReturn, setPendingReturn] = useState<any>(null)
 
   useEffect(() => { loadData() }, [id])
 
@@ -408,12 +409,37 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     setSegments(prev => prev.map((s, i) => i === idx ? { ...s, [key]: val } : s))
   }
 
-  function handleExtracted(data: any) {
+  function handleExtracted(extracted: any) {
+    console.log('handleExtracted called with:', extracted)
     setShowScanner(false)
-    // Merge extracted data into form, set day
-    setForm({ ...EMPTY, ...data, event_date: data.event_date || selDay })
-    setSelDay(data.event_date || selDay)
+    const flights = Array.isArray(extracted) ? extracted : [extracted]
+    const outbound = flights[0]
+    if (flights[1]) setPendingReturn(flights[1])
+    const day = outbound.event_date || selDay
+    setSelDay(day)
     setViewMode('day')
+    setEditEvent(null)
+    const segs = (outbound.flight_segments || []).slice(0, 3)
+    const stops = Math.max(0, segs.length - 1)
+    setNumStops(stops)
+    setTimeout(() => {
+      setSegments(segs.length ? segs : [EMPTY_SEG()])
+      setForm({ ...EMPTY, ...outbound, event_date: day, num_stops: stops })
+      setShowForm(true)
+    }, 50)
+  }
+
+  function loadReturnFlight() {
+    if (!pendingReturn) return
+    const day = pendingReturn.event_date || selDay
+    setSelDay(day)
+    const segs = (pendingReturn.flight_segments || []).slice(0, 3)
+    const stops = Math.max(0, segs.length - 1)
+    setSegments(segs.length ? segs : [EMPTY_SEG()])
+    setNumStops(stops)
+    setForm({ ...EMPTY, ...pendingReturn, event_date: day, num_stops: stops })
+    setEditEvent(null)
+    setPendingReturn(null)
     setShowForm(true)
   }
 
@@ -549,6 +575,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const isAccom = form.category === 'hotel'
 
   return (
+    <>
     <div className="min-h-screen bg-slate-50">
       <TripNav trip={trip} active="itinerary" />
       <div className="max-w-4xl mx-auto px-4 pb-12">
@@ -676,7 +703,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                     <Map size={14} /> Mapa
                   </button>
                 )}
-                
+                <button onClick={openNew} className="btn-primary text-sm flex items-center gap-1.5"><Plus size={14} strokeWidth={2.5} /> Añadir</button>
               </div>
             </div>
 
@@ -1006,7 +1033,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                 <div className="card p-12 text-center">
                   <CalendarDays size={40} className="mx-auto text-slate-200 mb-3" strokeWidth={1} />
                   <p className="text-slate-400 mb-4">Sin eventos este día</p>
-                  
+                  <button onClick={openNew} className="btn-primary text-sm px-6 flex items-center gap-1.5 mx-auto"><Plus size={15} /> Añadir</button>
                 </div>
               ) : dayEvents.map(ev => {
                 const cfg = CAT_CONFIG[ev.category]
@@ -1201,5 +1228,25 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
         )}
       </div>
     </div>
+    {pendingReturn && (
+      <div className="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-blue-600 text-white rounded-2xl shadow-xl px-5 py-3 flex items-center gap-4 text-sm font-medium">
+        <Plane size={16} strokeWidth={2} />
+        <span>También detecté el vuelo de vuelta</span>
+        <button onClick={loadReturnFlight}
+          className="bg-white text-blue-600 px-3 py-1 rounded-xl text-xs font-semibold hover:bg-blue-50 transition-colors">
+          Añadir
+        </button>
+        <button onClick={() => setPendingReturn(null)} className="text-white/60 hover:text-white">✕</button>
+      </div>
+    )}
+
+    {showScanner && (
+      <DocumentScanner
+        tripDay={selDay}
+        onExtracted={handleExtracted}
+        onClose={() => setShowScanner(false)}
+      />
+    )}
+    </>
   )
 }
