@@ -10,6 +10,13 @@ import {
   Plane, ArrowLeft, Printer, Settings2, ChevronRight
 } from 'lucide-react'
 
+const kenburnsStyle = `
+  @keyframes kenburns {
+    from { transform: scale(1.06); }
+    to   { transform: scale(1.0); }
+  }
+`
+
 export default function TripHomePage({ params }: { params: { id: string } }) {
   const { id } = params
   const router = useRouter()
@@ -53,12 +60,16 @@ export default function TripHomePage({ params }: { params: { id: string } }) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <style>{kenburnsStyle}</style>
 
       {/* Hero */}
       <div className="relative flex-shrink-0 h-[60vh] min-h-[400px] overflow-hidden">
         {/* Background */}
         {coverImage ? (
-          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${coverImage})` }} />
+          <div className="absolute inset-0 bg-cover bg-center" style={{
+            backgroundImage: `url(${coverImage})`,
+            animation: 'kenburns 6s ease-out forwards',
+          }} />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-700 to-violet-800" />
         )}
