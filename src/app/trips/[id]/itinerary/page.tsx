@@ -518,6 +518,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       title: form.title, category: form.category,
       location: form.location || null, note: form.note || null,
       cost: Number(form.cost) || 0,
+      end_time: form.end_time || null,
       ticket_url: form.ticket_url || null,
       insurance_url: form.insurance_url || null,
       currency: form.currency || null,
@@ -618,11 +619,6 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
               className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border border-violet-200 text-violet-600 hover:bg-violet-50 transition-colors font-medium">
               <Sparkles size={14} strokeWidth={2} /> Escanear
             </button>
-            {viewMode === 'day' && (
-              <button onClick={openNew} className="btn-primary text-sm flex items-center gap-1.5">
-                <Plus size={14} strokeWidth={2.5} /> Añadir
-              </button>
-            )}
           </div>
         </div>
 
