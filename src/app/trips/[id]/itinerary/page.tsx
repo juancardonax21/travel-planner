@@ -608,6 +608,12 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
               }`}>
               <LayoutGrid size={13} strokeWidth={2} /> Vista general
             </button>
+            <button onClick={() => setViewMode('route')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                viewMode === 'route' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+              }`}>
+              <MapPin size={13} strokeWidth={2} /> Ruta
+            </button>
             <button onClick={() => setViewMode('day')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 viewMode === 'day' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'
@@ -624,7 +630,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
         </div>
 
         {/* Trip Route */}
-        {viewMode === 'week' && <TripRoute trip={trip} events={events} />}
+        {viewMode === 'route' && <TripRoute trip={trip} events={events} />}
 
         {/* Week view */}
         {viewMode === 'week' && (
