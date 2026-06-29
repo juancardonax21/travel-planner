@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves } from 'lucide-react'
 import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
@@ -18,11 +18,10 @@ const DayMap = dynamic(() => import('@/components/map/DayMap'), { ssr: false })
 
 // Category icon components (Lucide)
 const CAT_ICONS: Record<string, LucideIcon> = {
-  flight: Plane,
+  transport: Car,
   hotel: BedDouble,
   activity: Compass,
   meal: UtensilsCrossed,
-  transport: Car,
   other: Tag,
 }
 
@@ -57,6 +56,7 @@ const EMPTY: any = {
   title: '', category: 'activity', time: '09:00',
   event_date: '',
   location: '', lat: null, lng: null, note: '', cost: 0, currency: '', paid: false,
+  travel_mode: 'driving',
   ticket_url: '', insurance_url: '',
   num_stops: 0,
   flight_segments: [EMPTY_SEG()],
@@ -449,21 +449,21 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     const items = Array.isArray(extracted) ? extracted : [extracted]
     const first = items[0]
 
-    // If flight with return, save return for later
-    if (first.category === 'flight' && items[1]) setPendingReturn(items[1])
+    // Si es vuelo con retorno, guardar retorno para después
+    if (first.category === 'transport' && first.travel_mode === 'flight' && items[1]) setPendingReturn(items[1])
 
     const day = first.event_date || selDay
     setSelDay(day)
     setViewMode('day')
     setEditEvent(null)
 
-    if (first.category === 'flight') {
+    if (first.category === 'transport' && first.travel_mode === 'flight') {
       const segs = (first.flight_segments || []).slice(0, 3)
       const stops = Math.max(0, segs.length - 1)
       setNumStops(stops)
       setTimeout(() => {
         setSegments(segs.length ? segs : [EMPTY_SEG()])
-        setForm({ ...EMPTY, ...first, event_date: day, num_stops: stops })
+        setForm({ ...EMPTY, ...first, event_date: day, num_stops: stops, category: 'transport', travel_mode: 'flight' })
         setShowForm(true)
       }, 50)
     } else if (first.category === 'hotel') {
@@ -489,7 +489,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     const stops = Math.max(0, segs.length - 1)
     setSegments(segs.length ? segs : [EMPTY_SEG()])
     setNumStops(stops)
-    setForm({ ...EMPTY, ...pendingReturn, event_date: day, num_stops: stops })
+    setForm({ ...EMPTY, ...pendingReturn, event_date: day, num_stops: stops, category: 'transport', travel_mode: 'flight' })
     setEditEvent(null)
     setPendingReturn(null)
     setShowForm(true)
@@ -501,20 +501,21 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
   function openEdit(ev: Event) {
     const e = ev as any
-    const segs: Segment[] = e.flight_segments
+    const segs: Segment[] = e.flight_segments && e.flight_segments.length > 0
       ? e.flight_segments
       : [{ from: e.from_airport || '', to: e.to_airport || '', flight_number: e.flight_number || '',
             airline: e.airline || '', dep_time: e.dep_time || '', arr_time: e.arr_time || '',
-            terminal_dep: e.terminal || '', terminal_arr: e.arr_terminal || '' }]
+            terminal_dep: e.terminal || '', terminal_arr: e.arr_terminal || '', arr_date: '' }]
     setSegments(segs)
+    const numStopsFromSegs = Math.max(0, segs.length - 1)
     setForm({
       title: e.title, category: e.category, time: e.time || '09:00',
       event_date: e.day || '',
-      location: e.location || '', note: e.note || '', cost: e.cost || 0,
+      location: e.location || '', travel_mode: e.travel_mode || 'driving', note: e.note || '', cost: e.cost || 0,
       ticket_url: e.ticket_url || '', insurance_url: e.insurance_url || '',
       currency: e.currency || '',
       paid: e.paid || false,
-      num_stops: segs.length - 1,
+      num_stops: numStopsFromSegs,
       end_time: e.end_time || '',
       accom_type: e.accom_type || 'apartamento',
       accom_booking_ref: e.accom_booking_ref || '',
@@ -557,10 +558,10 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     }
     
     const firstSeg = segments[0]
-    const flightTime = form.category === 'flight' ? (firstSeg?.dep_time || form.time) : form.time
+    const flightTime = isFlight ? (firstSeg?.dep_time || form.time) : form.time
     const payload: any = {
       trip_id: id, day: (isAccom && form.accom_checkin_date) ? form.accom_checkin_date : (form.event_date || selDay), time: flightTime,
-      title: form.title, category: form.category,
+      title: form.title, category: form.category, travel_mode: form.travel_mode || 'driving',
       location: form.location || null, lat: form.lat || null, lng: form.lng || null, note: form.note || null,
       cost: Number(form.cost) || 0,
       end_time: form.end_time || null,
@@ -568,8 +569,8 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       insurance_url: form.insurance_url || null,
       currency: form.currency || null,
       paid: form.paid || false,
-      num_stops: form.category === 'flight' ? form.num_stops : null,
-      flight_segments: form.category === 'flight' ? segments : null,
+      num_stops: form.category === 'transport' && form.travel_mode === 'flight' ? form.num_stops : null,
+      flight_segments: form.category === 'transport' && form.travel_mode === 'flight' ? segments : null,
       accom_type: form.category === 'hotel' ? form.accom_type : null,
       accom_booking_ref: form.accom_booking_ref || null,
       accom_pin: form.accom_pin || null,
@@ -634,7 +635,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const dayEvents = events.filter(e => e.day === selDay).sort((a, b) => a.time.localeCompare(b.time))
   const dayW = selDay ? weather[selDay] : null
   const eventsWithCoords = dayEvents.filter(e => e.lat && e.lng)
-  const isFlight = form.category === 'flight'
+  const isFlight = form.category === 'transport' && form.travel_mode === 'flight'
   const isAccom = form.category === 'hotel'
 
   return (
@@ -826,7 +827,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
               <div className="card p-5 mb-4 border-blue-200 bg-blue-50/30">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="font-semibold text-slate-800">{(() => {
-                    const labels: Record<string,string> = {flight:'Vuelo',hotel:'Alojamiento',activity:'Actividad',meal:'Comida',transport:'Transporte',other:'Otro'}
+                    const labels: Record<string,string> = {transport:'Transporte',hotel:'Alojamiento',activity:'Actividad',meal:'Comida',other:'Otro'}
                     const cat = labels[form.category] || 'Elemento'
                     return editEvent ? `Editar ${cat.toLowerCase()}` : `Nuevo ${cat.toLowerCase()}`
                   })()}</h3>
@@ -843,6 +844,20 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       ))}
                     </select>
                   </div>
+
+                  {/* Travel Mode — aparece justo después de categoría si es Transport */}
+                  {form.category === 'transport' && !isFlight && (
+                    <div>
+                      <label className="label">Tipo de transporte</label>
+                      <select className="input" value={form.travel_mode || 'driving'} onChange={e => upd('travel_mode', e.target.value)}>
+                        <option value="driving">Coche</option>
+                        <option value="walking">A pie</option>
+                        <option value="bicycling">Bicicleta</option>
+                        <option value="transit">Transporte público</option>
+                        <option value="boat">Barco</option>
+                      </select>
+                    </div>
+                  )}
 
                   {/* Título */}
                   <div>
@@ -862,7 +877,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                   )}
 
                   {isAccom && (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {/* Subtipo */}
                       <div>
                         <label className="label">Tipo de alojamiento</label>
@@ -878,41 +893,64 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                           ))}
                         </div>
                       </div>
-                      {/* Nº reserva + PIN */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="label">Nº Reserva</label>
-                          <input className="input" value={form.accom_booking_ref} onChange={e => upd('accom_booking_ref', e.target.value)} placeholder="6749117536" />
-                        </div>
-                        <div>
-                          <label className="label">PIN (confidencial)</label>
-                          <input className="input" value={form.accom_pin} onChange={e => upd('accom_pin', e.target.value)} placeholder="2360" />
-                        </div>
-                      </div>
-                      {/* Check-in */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Check-in fecha</label>
-                          <input className="input" type="date" value={form.accom_checkin_date} onChange={e => upd('accom_checkin_date', e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="label">⏰ Check-in hora (desde)</label>
-                          <input className="input" type="time" value={form.accom_checkin_time} onChange={e => upd('accom_checkin_time', e.target.value)} />
+
+                      {/* SECCIÓN: RESERVA */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
+                        <div className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Datos de reserva</div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <label className="label">Nº Reserva</label>
+                            <input className="input" value={form.accom_booking_ref} onChange={e => upd('accom_booking_ref', e.target.value)} placeholder="6749117536" />
+                          </div>
+                          <div>
+                            <label className="label">PIN (confidencial)</label>
+                            <input className="input" value={form.accom_pin} onChange={e => upd('accom_pin', e.target.value)} placeholder="2697" />
+                          </div>
+                          <div>
+                            <label className="label flex items-center gap-1"><Phone size={11} strokeWidth={1.8} /> Teléfono</label>
+                            <input className="input" type="tel" value={form.accom_phone} onChange={e => upd('accom_phone', e.target.value)} placeholder="+34 901 234 567" />
+                          </div>
                         </div>
                       </div>
-                      {/* Check-out */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Check-out fecha</label>
-                          <input className="input" type="date" value={form.accom_checkout_date} onChange={e => upd('accom_checkout_date', e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="label">⏰ Check-out hora (hasta)</label>
-                          <input className="input" type="time" value={form.accom_checkout_time} onChange={e => upd('accom_checkout_time', e.target.value)} />
+
+                      {/* SECCIÓN: CHECK-IN / CHECK-OUT */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-3">
+                        <div className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Check-in / Check-out</div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Entrada (fecha)</label>
+                            <input className="input" type="date" value={form.accom_checkin_date} onChange={e => upd('accom_checkin_date', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="label">⏰ Entrada (hora)</label>
+                            <input className="input" type="time" value={form.accom_checkin_time} onChange={e => upd('accom_checkin_time', e.target.value)} placeholder="15:00" />
+                          </div>
+                          <div>
+                            <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Salida (fecha)</label>
+                            <input className="input" type="date" value={form.accom_checkout_date} onChange={e => upd('accom_checkout_date', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="label">⏰ Salida (hora)</label>
+                            <input className="input" type="time" value={form.accom_checkout_time} onChange={e => upd('accom_checkout_time', e.target.value)} placeholder="10:00" />
+                          </div>
                         </div>
                       </div>
-                      {/* Huéspedes */}
-                      <div className="grid grid-cols-2 gap-3">
+
+                      {/* SECCIÓN: UBICACIÓN Y CONTACTO */}
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-3">
+                        <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Ubicación</div>
+                        <div>
+                          <label className="label flex items-center gap-1"><MapPin size={11} strokeWidth={1.8} /> Dirección</label>
+                          <input className="input" value={form.accom_address} onChange={e => upd('accom_address', e.target.value)} placeholder="Paseos de la Mota, s/n, 49600 Benavente" />
+                        </div>
+                        <div>
+                          <label className="label flex items-center gap-1"><Globe size={11} strokeWidth={1.8} /> Web / Link reserva</label>
+                          <input className="input" type="url" value={form.accom_web} onChange={e => upd('accom_web', e.target.value)} placeholder="https://booking.com/..." />
+                        </div>
+                      </div>
+
+                      {/* SECCIÓN: HUÉSPEDES Y HABITACIÓN */}
+                      <div className="grid grid-cols-3 gap-3">
                         <div>
                           <label className="label flex items-center gap-1"><Users size={11} strokeWidth={1.8} /> Adultos</label>
                           <input className="input" type="number" min="1" value={form.accom_guests_adults} onChange={e => upd('accom_guests_adults', e.target.value)} placeholder="2" />
@@ -921,45 +959,15 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                           <label className="label flex items-center gap-1"><Users size={11} strokeWidth={1.8} /> Niños</label>
                           <input className="input" type="number" min="0" value={form.accom_guests_children} onChange={e => upd('accom_guests_children', e.target.value)} placeholder="2" />
                         </div>
-                      </div>
-                      {/* Dirección */}
-                      <div>
-                        <label className="label flex items-center gap-1"><MapPin size={11} strokeWidth={1.8} /> Dirección</label>
-                        <input className="input" value={form.accom_address} onChange={e => upd('accom_address', e.target.value)} placeholder="Collins Avenue, Miami Beach 33141" />
-                      </div>
-                      {/* Web alojamiento */}
-                      <div>
-                        <label className="label flex items-center gap-1"><Globe size={11} strokeWidth={1.8} /> Web / Link reserva</label>
-                        <input className="input" type="url" value={form.accom_web} onChange={e => upd('accom_web', e.target.value)} placeholder="https://booking.com/..." />
-                      </div>
-                      {/* Cancelación */}
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
-                        <div className="text-xs font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1"><AlertTriangle size={11} strokeWidth={2} /> Política de cancelación</div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="label">Cancelación gratis hasta</label>
-                            <input className="input" type="date" value={form.accom_cancel_date} onChange={e => upd('accom_cancel_date', e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="label">Cargo si cancelas después</label>
-                            <input className="input" value={form.accom_cancel_fee} onChange={e => upd('accom_cancel_fee', e.target.value)} placeholder="$1.600 / 100%" />
-                          </div>
-                        </div>
-                      </div>
-                      {/* Teléfono + Nº habitación */}
-                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="label flex items-center gap-1"><Phone size={11} strokeWidth={1.8} /> Teléfono</label>
-                          <input className="input" type="tel" value={form.accom_phone} onChange={e => upd('accom_phone', e.target.value)} placeholder="+1 305 000 0000" />
-                        </div>
-                        <div>
-                          <label className="label flex items-center gap-1"><Hash size={11} strokeWidth={1.8} /> Nº habitación / apto.</label>
-                          <input className="input" value={form.accom_room} onChange={e => upd('accom_room', e.target.value)} placeholder="Apt. 4B, Room 302..." />
+                          <label className="label flex items-center gap-1"><Hash size={11} strokeWidth={1.8} /> Habitación / Apt</label>
+                          <input className="input" value={form.accom_room} onChange={e => upd('accom_room', e.target.value)} placeholder="Apt. 4B" />
                         </div>
                       </div>
-                      {/* Amenities */}
-                      <div>
-                        <label className="label">Servicios incluidos</label>
+
+                      {/* SECCIÓN: SERVICIOS */}
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
+                        <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Servicios incluidos</div>
                         <div className="grid grid-cols-3 gap-2">
                           {([
                             {k:'accom_breakfast', Icon: Utensils, label:'Desayuno'},
@@ -973,59 +981,45 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                               onClick={() => upd(a.k, !form[a.k])}
                               className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs border transition-all ${
                                 form[a.k]
-                                  ? 'bg-green-50 text-green-700 border-green-300 font-medium'
+                                  ? 'bg-amber-100 text-amber-700 border-amber-300 font-medium'
                                   : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
                               }`}>
                               <a.Icon size={12} strokeWidth={1.8} /> {a.label}
                             </button>
                           ))}
                         </div>
+                        {form.accom_parking_included && (
+                          <div>
+                            <label className="label flex items-center gap-1"><Car size={11} strokeWidth={1.8} /> Detalles parking</label>
+                            <input className="input" value={form.accom_parking_info} onChange={e => upd('accom_parking_info', e.target.value)} placeholder="Incluido · acceso por Collins Ave." />
+                          </div>
+                        )}
                       </div>
-                      {/* Parking info */}
-                      {form.accom_parking_included && (
-                      <div>
-                        <label className="label flex items-center gap-1"><Car size={11} strokeWidth={1.8} /> Info parking</label>
-                        <input className="input" value={form.accom_parking_info} onChange={e => upd('accom_parking_info', e.target.value)} placeholder="Incluido · acceso por Collins Ave." />
+
+                      {/* SECCIÓN: CANCELACIÓN */}
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-3">
+                        <div className="text-xs font-semibold text-red-700 uppercase tracking-wide flex items-center gap-1"><AlertTriangle size={11} strokeWidth={2} /> Cancelación</div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="label">Gratis hasta</label>
+                            <input className="input" type="date" value={form.accom_cancel_date} onChange={e => upd('accom_cancel_date', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="label">Cargo después</label>
+                            <input className="input" value={form.accom_cancel_fee} onChange={e => upd('accom_cancel_fee', e.target.value)} placeholder="$1.600 / 100%" />
+                          </div>
+                        </div>
                       </div>
-                      )}
-                      {/* Notas */}
-                      <div>
+
+                      {/* SECCIÓN: NOTAS DE ACCESO */}
+                      <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
                         <label className="label flex items-center gap-1"><MapPin size={11} strokeWidth={1.8} /> Acceso / Indicaciones</label>
                         <textarea className="input" rows={2} value={form.accom_notes} onChange={e => upd('accom_notes', e.target.value)} placeholder="Recogida de llaves, código de acceso, parking..." />
                       </div>
                     </div>
                   )}
 
-                  {isFlight ? (
-                    <>
-                      {/* Número de escalas */}
-                      <div>
-                        <label className="label">Escalas</label>
-                        <div className="flex gap-2">
-                          {[
-                            { n: 0, label: 'Directo' },
-                            { n: 1, label: '1 escala' },
-                            { n: 2, label: '2 escalas' },
-                          ].map(o => (
-                            <button key={o.n} type="button"
-                              onClick={() => setNumStops(o.n)}
-                              className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${
-                                form.num_stops === o.n
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow'
-                                  : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
-                              }`}>
-                              {o.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Segment forms */}
-                      {segments.map((seg, i) => (
-                        <SegmentForm key={i} seg={seg} idx={i} total={segments.length} onChange={updateSegment} />
-                      ))}
-                    </>
-                  ) : (
+                  {!isAccom && (
                     <>
                       <div>
                         <label className="label">Hora inicio</label>
@@ -1123,7 +1117,21 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                         <span className="text-xs font-mono text-slate-400">{ev.time?.slice(0,5)}</span>
                         <div className="mt-1.5 w-9 h-9 rounded-xl flex items-center justify-center"
                           style={{background: cfg.bg}}>
-                          {(() => { const Icon = CAT_ICONS[ev.category] || Tag; return <Icon size={17} strokeWidth={1.8} style={{color: cfg.color}} /> })()}
+                          {(() => { 
+                            // Mapear travel_mode a icono específico
+                            let Icon = Tag
+                            if (ev.category === 'transport') {
+                              if (ev.travel_mode === 'flight') Icon = Plane
+                              else if (ev.travel_mode === 'driving') Icon = Car
+                              else if (ev.travel_mode === 'walking') Icon = Footprints
+                              else if (ev.travel_mode === 'bicycling') Icon = Bike
+                              else if (ev.travel_mode === 'transit') Icon = Bus
+                              else if (ev.travel_mode === 'boat') Icon = Waves
+                            } else {
+                              Icon = CAT_ICONS[ev.category] || Tag
+                            }
+                            return <Icon size={17} strokeWidth={1.8} style={{color: cfg.color}} /> 
+                          })()}
                         </div>
                       </div>
                       <div className="w-px bg-slate-100 self-stretch" />
@@ -1199,11 +1207,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                               </div>
                             )}
                             {/* Flight segments timeline */}
-                            {ev.category === 'flight' && segs && segs.length > 0 && (
+                            {ev.category === 'transport' && ev.travel_mode === 'flight' && segs && segs.length > 0 && (
                               <FlightTimeline segments={segs} eventDay={ev.day} />
                             )}
                             {/* Fallback for old events without segments */}
-                            {ev.category === 'flight' && !segs && e.from_airport && (
+                            {ev.category === 'transport' && ev.travel_mode === 'flight' && !segs && e.from_airport && (
                               <div className="mt-2 bg-blue-50 rounded-xl p-2.5 space-y-1">
                                 <div className="flex items-center gap-2">
                                   <span className="font-bold text-blue-800">{e.from_airport}</span>
@@ -1221,7 +1229,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                           {/* Edit/delete — hover */}
                           <div className="flex flex-col items-end gap-2 flex-shrink-0">
                             <CategoryBadge category={ev.category} />
-                            {ev.category === 'flight' && tripMembers.length > 0 && (
+                            {ev.category === 'transport' && ev.travel_mode === 'flight' && tripMembers.length > 0 && (
                               <DocStatusBadge
                                 travelers={tripMembers}
                                 tripEndDate={trip.end_date}

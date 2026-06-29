@@ -5,7 +5,7 @@ import type { Trip } from '@/types'
 import { daysUntil, formatDate, formatCurrency } from '@/lib/utils'
 import TripNav from '@/components/layout/TripNav'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
-import { Plane, BedDouble, Car, Compass, UtensilsCrossed, Tag, CheckCircle2, Circle, ArrowLeftRight, AlertTriangle, Ticket, Shield } from 'lucide-react'
+import { Plane, BedDouble, Car, Compass, UtensilsCrossed, Tag, CheckCircle2, Circle, ArrowLeftRight, AlertTriangle, Ticket, Shield, CreditCard } from 'lucide-react'
 
 const BCAT: Record<string, { label: string; color: string; bg: string; Icon: any }> = {
   flights:    { label: 'Vuelos',       color: '#1D4ED8', bg: '#DBEAFE', Icon: Plane },
@@ -40,7 +40,7 @@ export default function BudgetPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     async function load() {
       const [{ data: t }, { data: ev }] = await Promise.all([
-        supabase.from('trips').select('*, travelers(*)').eq('id', id).single(),
+        supabase.from('trips').select('*, trip_members(*)').eq('id', id).single(),
         supabase.from('events').select('*').eq('trip_id', id).gt('cost', 0).order('day'),
       ])
       setTrip(t); setItems((ev || []) as EventItem[]); setLoading(false)
@@ -98,9 +98,8 @@ export default function BudgetPage({ params }: { params: { id: string } }) {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-slate-800">Presupuesto</h2>
           <button onClick={() => setShowAlt(v => !v)}
-            className="flex items-center gap-1.5 text-sm border border-slate-200 bg-white rounded-xl px-3 py-1.5 hover:border-blue-300 transition-colors">
-            <ArrowLeftRight size={13} strokeWidth={2} className="text-slate-400" />
-            <span className="font-mono text-slate-600">{showAlt ? trip.exchange_base : `${trip.currency_sym} ${trip.currency}`}</span>
+            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-colors">
+            {showAlt ? `Ver en ${trip.currency}` : `Ver en ${trip.exchange_base}`}
           </button>
         </div>
 
@@ -116,9 +115,9 @@ export default function BudgetPage({ params }: { params: { id: string } }) {
               <p className="text-white font-bold font-mono text-lg">
                 {formatCurrency(toDisplay(s.value), showAlt ? trip.exchange_base : trip.currency, 0)}
               </p>
-              {trip.travelers?.length ? (
+              {trip.trip_members?.length ? (
                 <p className="text-white/60 text-xs mt-0.5 font-mono">
-                  {formatCurrency(toDisplay(s.value)/trip.travelers.length, showAlt ? trip.exchange_base : trip.currency, 0)} p/p
+                  {formatCurrency(toDisplay(s.value)/trip.trip_members.length, showAlt ? trip.exchange_base : trip.currency, 0)} p/p
                 </p>
               ) : null}
             </div>
@@ -282,7 +281,7 @@ export default function BudgetPage({ params }: { params: { id: string } }) {
                 <div>
                   <div className="font-semibold text-slate-800">Total viaje</div>
                   <div className="text-xs text-slate-400 mt-0.5">
-                    {items.length} reservas · {trip.travelers?.length || 0} viajeros
+                    {items.length} reservas · {trip.trip_members?.length || 0} viajeros
                   </div>
                 </div>
                 <div className="text-right">
@@ -290,7 +289,7 @@ export default function BudgetPage({ params }: { params: { id: string } }) {
                     {formatCurrency(toDisplay(total), showAlt ? trip.exchange_base : trip.currency)}
                   </div>
                   <div className="text-xs font-mono text-slate-400">
-                    {formatCurrency(toDisplay(total)/Math.max(1,trip.travelers?.length||1), showAlt ? trip.exchange_base : trip.currency, 0)} por persona
+                    {formatCurrency(toDisplay(total)/Math.max(1,trip.trip_members?.length||1), showAlt ? trip.exchange_base : trip.currency, 0)} por persona
                   </div>
                 </div>
               </div>
