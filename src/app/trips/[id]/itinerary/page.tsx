@@ -9,6 +9,7 @@ import TripNav from '@/components/layout/TripNav'
 import dynamic from 'next/dynamic'
 import WeekView from '@/components/itinerary/WeekView'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
+import TripRoute from '@/components/itinerary/TripRoute'
 
 const DayMap = dynamic(() => import('@/components/map/DayMap'), { ssr: false })
 
@@ -621,6 +622,9 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
             </button>
           </div>
         </div>
+
+        {/* Trip Route */}
+        {viewMode === 'week' && <TripRoute trip={trip} events={events} />}
 
         {/* Week view */}
         {viewMode === 'week' && (
