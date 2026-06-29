@@ -65,6 +65,7 @@ export default function DossierPage({ params }: { params: { id: string } }) {
   const vouchers: any[] = [
     ...events.filter(e => e.ticket_url).map(e => ({ name: e.title, url: e.ticket_url, date: e.day, type: 'Billete' })),
     ...events.filter(e => e.insurance_url).map(e => ({ name: `Seguro — ${e.title}`, url: e.insurance_url, date: e.day, type: 'Seguro' })),
+    ...events.filter(e => e.category === 'hotel' && e.accom_web).map(e => ({ name: e.title, url: e.accom_web, date: e.accom_checkin_date, type: 'Alojamiento' })),
     ...docs.filter(d => d.url).map(d => ({ name: d.name, url: d.url, date: null, type: d.category })),
     ...memberDocs.filter(d => d.file_url).map(d => ({ name: `${d.label} — ${d.family_member?.name?.split(' ')[0] || ''}`, url: d.file_url, date: null, type: 'Billete' })),
   ]
@@ -116,51 +117,9 @@ export default function DossierPage({ params }: { params: { id: string } }) {
         <div style={{ fontSize: 9, opacity: 0.4, marginTop: 20 }}>Generado el {formatDate(new Date().toISOString().split('T')[0], 'd MMMM yyyy')}</div>
       </div>
 
-      {/* ── PLANNING CALENDARIO ────────────────────────────── */}
+      {/* ── PLANNING DEL VIAJE (Itinerario día a día) ────────── */}
       <div className="pb" style={{ padding: '20px 0' }}>
         <h2>Planning del viaje</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: '#e5e7eb' }}>
-          {['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d => (
-            <div key={d} style={{ background: '#1e3a5f', color: 'white', textAlign: 'center', padding: '4px 0', fontSize: 9, fontWeight: 700 }}>{d}</div>
-          ))}
-          {/* Fill empty cells before trip start */}
-          {Array.from({ length: (startDate.getDay() || 7) - 1 }).map((_, i) => (
-            <div key={`empty-${i}`} style={{ background: '#f9fafb', minHeight: 60 }} />
-          ))}
-          {days.map(day => {
-            const dayEvents = byDay(day)
-            const d = new Date(day)
-            return (
-              <div key={day} style={{ background: 'white', minHeight: 60, padding: '4px 5px', borderTop: '2px solid #3b4ea6' }}>
-                <div style={{ fontWeight: 700, fontSize: 11, color: '#1e3a5f', marginBottom: 3 }}>{d.getDate()}</div>
-                {dayEvents.slice(0, 3).map((ev, i) => (
-                  <div key={i} style={{
-                    fontSize: 7, padding: '1px 3px', borderRadius: 2, marginBottom: 1, truncate: 'true',
-                    overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-                    background: ev.category === 'flight' ? '#dbeafe' : ev.category === 'hotel' ? '#d1fae5' : ev.category === 'activity' ? '#fef3c7' : '#f3f4f6',
-                    color: ev.category === 'flight' ? '#1d4ed8' : ev.category === 'hotel' ? '#065f46' : ev.category === 'activity' ? '#92400e' : '#374151',
-                  }}>{ev.title}</div>
-                ))}
-                {dayEvents.length > 3 && <div style={{ fontSize: 7, color: '#9ca3af' }}>+{dayEvents.length - 3} más</div>}
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Legend */}
-        <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 9 }}>
-          {[['#dbeafe','#1d4ed8','Vuelo'], ['#d1fae5','#065f46','Hotel'], ['#fef3c7','#92400e','Actividad'], ['#f3f4f6','#374151','Transporte']].map(([bg, color, label]) => (
-            <div key={label as string} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: 12, height: 12, background: bg as string, borderRadius: 2 }} />
-              <span style={{ color: '#666' }}>{label as string}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── ITINERARIO ─────────────────────────────────────── */}
-      <div className="pb" style={{ padding: '20px 0' }}>
-        <h2>Itinerario día a día</h2>
         {days.map(day => (
           <div key={day} style={{ marginBottom: 12, breakInside: 'avoid' }}>
             <div style={{ background: '#1e3a5f', color: 'white', padding: '5px 12px', borderRadius: '6px 6px 0 0', fontSize: 11, fontWeight: 700 }}>
@@ -196,6 +155,27 @@ export default function DossierPage({ params }: { params: { id: string } }) {
             ))}
           </div>
         ))}
+      </div>
+
+      {/* ── ITINERARIO DEL VIAJE (Mapa) ────────────────────── */}
+      <div className="pb" style={{ padding: '20px 0' }}>
+        <h2>Itinerario del viaje</h2>
+        {(() => {
+          const locationsWithCoords = events.filter(e => e.lat && e.lng)
+          if (locationsWithCoords.length > 0) {
+            const markers = locationsWithCoords
+              .map((e, i) => `color:blue|label:${i + 1}|${e.lat},${e.lng}`)
+              .join('&markers=')
+            const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=1000x500&markers=${markers}&path=color:0x2563EB|weight:2|geodesic:true|${locationsWithCoords.map(e => `${e.lat},${e.lng}`).join('|')}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+            return (
+              <div style={{ textAlign: 'center' }}>
+                <img src={mapUrl} alt="Mapa del viaje" style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid #e5e7eb' }} />
+                <div style={{ fontSize: 9, color: '#888', marginTop: 8 }}>Ruta completa del viaje con {locationsWithCoords.length} ubicaciones</div>
+              </div>
+            )
+          }
+          return null
+        })()}
       </div>
 
       {/* ── PRESUPUESTO ────────────────────────────────────── */}

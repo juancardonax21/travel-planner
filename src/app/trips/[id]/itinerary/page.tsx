@@ -563,7 +563,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       title: form.title, category: form.category, travel_mode: form.travel_mode || 'driving',
       location: form.location || null, lat: form.lat || null, lng: form.lng || null, note: form.note || null,
       cost: Number(form.cost) || 0,
-      end_time: form.end_time || null,
+      end_time: isFlight ? (segments[segments.length - 1]?.arr_time || null) : (form.end_time || null),
       ticket_url: form.ticket_url || null,
       insurance_url: form.insurance_url || null,
       currency: form.currency || null,
@@ -833,38 +833,14 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                 </div>
 
                 <div className="space-y-3">
-                  {/* Categoría */}
-                  <div>
-                    <label className="label">Categoría</label>
-                    <select className="input" value={form.category} onChange={e => upd('category', e.target.value)}>
-                      {Object.entries(CAT_CONFIG).map(([k, v]) => (
-                        <option key={k} value={k}>{v.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Travel Mode — aparece justo después de categoría si es Transport */}
-                  {form.category === 'transport' && !isFlight && (
-                    <div>
-                      <label className="label">Tipo de transporte</label>
-                      <select className="input" value={form.travel_mode || 'driving'} onChange={e => upd('travel_mode', e.target.value)}>
-                        <option value="driving">Coche</option>
-                        <option value="walking">A pie</option>
-                        <option value="bicycling">Bicicleta</option>
-                        <option value="transit">Transporte público</option>
-                        <option value="boat">Barco</option>
-                      </select>
-                    </div>
-                  )}
-
-                  {/* Título */}
+                  {/* TÍTULO */}
                   <div>
                     <label className="label">Título *</label>
                     <input className="input" value={form.title} onChange={e => upd('title', e.target.value)}
                       placeholder={isFlight ? 'VUELO MAD → MIA' : 'Nombre del evento'} autoFocus />
                   </div>
 
-                  {/* Date — hide for accommodation (uses checkin date) */}
+                  {/* FECHA — hide for accommodation (uses checkin date) */}
                   {!isAccom && (
                   <div>
                     <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Fecha del evento</label>
@@ -874,6 +850,78 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                   </div>
                   )}
 
+                  {/* CATEGORÍA */}
+                  <div>
+                    <label className="label">Categoría</label>
+                    <select className="input" value={form.category} onChange={e => upd('category', e.target.value)}>
+                      {Object.entries(CAT_CONFIG).map(([k, v]) => (
+                        <option key={k} value={k}>{v.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* TRAVEL MODE — solo si es Transport */}
+                  {form.category === 'transport' && (
+                    <div>
+                      <label className="label">Tipo de transporte</label>
+                      <select className="input" value={form.travel_mode || 'driving'} onChange={e => upd('travel_mode', e.target.value)}>
+                        <option value="driving">Coche</option>
+                        <option value="walking">A pie</option>
+                        <option value="bicycling">Bicicleta</option>
+                        <option value="transit">Transporte público</option>
+                        <option value="flight">Vuelo</option>
+                        <option value="boat">Barco</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* FORMULARIO VUELO */}
+                  {isFlight && (
+                    <>
+                      {/* Número de escalas */}
+                      <div>
+                        <label className="label">Escalas</label>
+                        <div className="flex gap-2">
+                          {[
+                            { n: 0, label: 'Directo' },
+                            { n: 1, label: '1 escala' },
+                            { n: 2, label: '2 escalas' },
+                          ].map(o => (
+                            <button key={o.n} type="button"
+                              onClick={() => setNumStops(o.n)}
+                              className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${
+                                form.num_stops === o.n
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                              }`}>
+                              {o.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Segment forms */}
+                      {segments.map((seg, i) => (
+                        <SegmentForm key={i} seg={seg} idx={i} total={segments.length} onChange={updateSegment} />
+                      ))}
+                    </>
+                  )}
+
+                  {/* FORMULARIO COCHE/TRANSPORTE (NO vuelo, NO alojamiento) */}
+                  {!isFlight && !isAccom && (
+                    <>
+                      <div>
+                        <label className="label">Lugar</label>
+                        <LocationPicker 
+                          value={form.location} 
+                          onChange={(location) => upd('location', location)}
+                          placeholder="Buscar lugar..." 
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* FORMULARIO ALOJAMIENTO */}
                   {isAccom && (
                     <div className="space-y-4">
                       {/* Subtipo */}
@@ -1017,30 +1065,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                     </div>
                   )}
 
-                  {!isAccom && (
-                    <>
-                      <div>
-                        <label className="label">Hora inicio</label>
-                        <input className="input" type="time" value={form.time} onChange={e => upd('time', e.target.value)} />
-                      </div>
-                      <div>
-                        <label className="label">Hora fin <span className="text-slate-400 font-normal">(opcional)</span></label>
-                        <input className="input" type="time" value={form.end_time || ''} onChange={e => upd('end_time', e.target.value)} />
-                      </div>
-                      <div>
-                        <label className="label">Lugar</label>
-                        <LocationPicker 
-                          value={form.location} 
-                          onChange={(location) => upd('location', location)}
-                          placeholder="Buscar lugar..." 
-                        />
-                      </div>
-                      <div>
-                        <label className="label">Notas</label>
-                        <textarea className="input" rows={2} value={form.note} onChange={e => upd('note', e.target.value)} placeholder="Notas adicionales..." />
-                      </div>
-                    </>
-                  )}
+                  {/* NOTAS — al final de todo */}
+                  <div>
+                    <label className="label">Notas</label>
+                    <textarea className="input" rows={2} value={form.note} onChange={e => upd('note', e.target.value)} placeholder="Notas adicionales..." />
+                  </div>
 
                   {/* Coste + Moneda + Pagado */}
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
