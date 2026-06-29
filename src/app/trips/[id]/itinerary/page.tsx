@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon } from 'lucide-react'
+import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
 import { formatDate, CAT_CONFIG, formatCurrency } from '@/lib/utils'
@@ -10,6 +11,7 @@ import dynamic from 'next/dynamic'
 import WeekView from '@/components/itinerary/WeekView'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import TripRoute from '@/components/itinerary/TripRoute'
+import LocationPicker from '@/components/itinerary/LocationPicker'
 
 const DayMap = dynamic(() => import('@/components/map/DayMap'), { ssr: false })
 
@@ -54,7 +56,7 @@ const EMPTY_SEG = (): Segment => ({
 const EMPTY: any = {
   title: '', category: 'activity', time: '09:00',
   event_date: '',
-  location: '', note: '', cost: 0, currency: '', paid: false,
+  location: '', lat: null, lng: null, note: '', cost: 0, currency: '', paid: false,
   ticket_url: '', insurance_url: '',
   num_stops: 0,
   flight_segments: [EMPTY_SEG()],
@@ -81,6 +83,38 @@ const EMPTY: any = {
 
 function safeHost(url: string) {
   try { return new URL(url).hostname.replace('www.', '') } catch { return 'Link' }
+}
+
+async function geocodeLocation(location: string): Promise<{ lat: number; lng: number } | null> {
+  if (!location?.trim()) {
+    console.log('Location vacía, no geocodificando')
+    return null
+  }
+  
+  console.log('Geocodificando:', location)
+  console.log('API Key disponible:', !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)
+  
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+    console.log('URL:', url.replace(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '', 'KEY_HIDDEN'))
+    
+    const response = await fetch(url)
+    const data = await response.json()
+    
+    console.log('Respuesta geocoding:', data)
+    
+    if (data.results?.length > 0) {
+      const { lat, lng } = data.results[0].geometry.location
+      console.log('Coordenadas encontradas:', { lat, lng })
+      return { lat, lng }
+    } else {
+      console.warn('No results found:', data.status)
+    }
+  } catch (err) {
+    console.error('Geocoding error:', err)
+  }
+  
+  return null
 }
 
 function SegmentForm({ seg, idx, total, onChange }: {
@@ -512,12 +546,22 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   async function handleSave() {
     if (!form.title.trim()) return
     setSaving(true)
+    
+    // Geocodificar si hay ubicación y no hay coordenadas
+    if (form.location && (!form.lat || !form.lng)) {
+      const coords = await geocodeLocation(form.location)
+      if (coords) {
+        form.lat = coords.lat
+        form.lng = coords.lng
+      }
+    }
+    
     const firstSeg = segments[0]
     const flightTime = form.category === 'flight' ? (firstSeg?.dep_time || form.time) : form.time
     const payload: any = {
       trip_id: id, day: (isAccom && form.accom_checkin_date) ? form.accom_checkin_date : (form.event_date || selDay), time: flightTime,
       title: form.title, category: form.category,
-      location: form.location || null, note: form.note || null,
+      location: form.location || null, lat: form.lat || null, lng: form.lng || null, note: form.note || null,
       cost: Number(form.cost) || 0,
       end_time: form.end_time || null,
       ticket_url: form.ticket_url || null,
@@ -595,6 +639,10 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
   return (
     <>
+    <Script 
+      src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
+      strategy="lazyOnload"
+    />
     <div className="min-h-screen bg-slate-50">
       <TripNav trip={trip} active="itinerary" />
       <div className="max-w-4xl mx-auto px-4 pb-12">
@@ -989,7 +1037,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       </div>
                       <div>
                         <label className="label">Lugar</label>
-                        <input className="input" value={form.location} onChange={e => upd('location', e.target.value)} placeholder="Nombre del lugar" />
+                        <LocationPicker 
+                          value={form.location} 
+                          onChange={(location) => upd('location', location)}
+                          placeholder="Buscar lugar..." 
+                        />
                       </div>
                       <div>
                         <label className="label">Notas</label>
