@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { MapPin, Loader2, Car, BedDouble, Calendar } from 'lucide-react'
+import { Loader2, Car, BedDouble, MapPin } from 'lucide-react'
 import type { Event, Trip } from '@/types'
 
 interface Stop {
@@ -16,26 +16,16 @@ interface Stop {
   dayCount: number
 }
 
-interface Segment {
-  from: Stop
-  to: Stop
-  distanceKm?: number
-  countryChange: boolean
-}
-
 async function geocodeLocation(location: string): Promise<{ lat: number; lng: number; country: string } | null> {
   if (!location?.trim()) return null
-  
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`,
       { headers: { 'Accept-Language': 'es' } }
     )
     if (!response.ok) return null
-    
     const data = await response.json()
     if (!data?.[0]) return null
-    
     const result = data[0]
     const country = result.address?.country || getCountryFromLocation(location)
     return { 
@@ -44,7 +34,6 @@ async function geocodeLocation(location: string): Promise<{ lat: number; lng: nu
       country 
     }
   } catch (error) {
-    console.error('Geocoding error:', error)
     return null
   }
 }
@@ -53,7 +42,6 @@ function getCountryFromLocation(location: string): string {
   const l = location.toLowerCase()
   if (l.includes('portugal')) return 'Portugal'
   if (l.includes('españa') || l.includes('madrid') || l.includes('benavente') || l.includes('valencia')) return 'España'
-  if (l.includes('france')) return 'Francia'
   return 'Destino'
 }
 
@@ -73,13 +61,16 @@ function daysDiff(d1: string, d2: string): number {
 }
 
 function formatDate(day: string): string {
-  const d = new Date(day)
-  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+  return new Date(day).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+}
+
+interface RouteStop extends Stop {
+  distanceToPrevious?: number
+  previousCountry?: string
 }
 
 export default function TripRoute({ trip, events }: { trip: Trip; events: Event[] }) {
-  const [stops, setStops] = useState<Stop[]>([])
-  const [segments, setSegments] = useState<Segment[]>([])
+  const [stops, setStops] = useState<RouteStop[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -87,7 +78,6 @@ export default function TripRoute({ trip, events }: { trip: Trip; events: Event[
       try {
         setLoading(true)
         
-        // Incluir hoteles (por título) + transportes principales
         const routeEvents = events.filter(e => 
           (e.category === 'hotel' || e.category === 'transport') && 
           (e.location || e.accom_address)
@@ -95,13 +85,11 @@ export default function TripRoute({ trip, events }: { trip: Trip; events: Event[
         
         if (routeEvents.length === 0) {
           setStops([])
-          setSegments([])
           setLoading(false)
           return
         }
         
-        // Crear un stop por evento (no deduplicar)
-        const stopsArray: Stop[] = []
+        const stopsArray: RouteStop[] = []
         
         for (const event of routeEvents) {
           const location = event.category === 'hotel' 
@@ -112,7 +100,6 @@ export default function TripRoute({ trip, events }: { trip: Trip; events: Event[
           
           const geocoded = await geocodeLocation(location)
           
-          // Buscar si hay parada anterior en mismo lugar
           const existingStop = stopsArray.find(s => 
             s.location === location && s.type === event.category
           )
@@ -136,27 +123,18 @@ export default function TripRoute({ trip, events }: { trip: Trip; events: Event[
           }
         }
         
-        // Calcular segmentos
-        const routeSegments: Segment[] = []
-        for (let i = 0; i < stopsArray.length - 1; i++) {
-          const from = stopsArray[i]
-          const to = stopsArray[i + 1]
+        // Calcular distancias
+        for (let i = 1; i < stopsArray.length; i++) {
+          const prev = stopsArray[i - 1]
+          const curr = stopsArray[i]
           
-          let distanceKm: number | undefined
-          if (from.lat && from.lng && to.lat && to.lng) {
-            distanceKm = calculateDistance(from.lat, from.lng, to.lat, to.lng)
+          if (prev.lat && prev.lng && curr.lat && curr.lng) {
+            curr.distanceToPrevious = calculateDistance(prev.lat, prev.lng, curr.lat, curr.lng)
+            curr.previousCountry = prev.country
           }
-          
-          routeSegments.push({
-            from,
-            to,
-            distanceKm,
-            countryChange: from.country !== to.country
-          })
         }
         
         setStops(stopsArray)
-        setSegments(routeSegments)
       } catch (err) {
         console.error('Route building error:', err)
       } finally {
@@ -169,75 +147,82 @@ export default function TripRoute({ trip, events }: { trip: Trip; events: Event[
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-4">
+      <div className="flex items-center justify-center py-12">
         <Loader2 size={16} className="animate-spin text-blue-500 mr-2" />
         <span className="text-xs text-slate-500">Cargando ruta...</span>
       </div>
     )
   }
 
-  if (stops.length === 0) return null
+  if (stops.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12 text-slate-400">
+        <MapPin size={16} className="mr-2" />
+        <span className="text-sm">Sin ubicaciones en este viaje</span>
+      </div>
+    )
+  }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
-      <div className="flex items-center gap-2 mb-4">
-        <MapPin size={16} strokeWidth={2} className="text-blue-600" />
-        <h3 className="text-sm font-semibold text-slate-900">Ruta del viaje</h3>
-      </div>
-      
-      <div className="space-y-3">
-        {stops.map((stop, idx) => (
-          <div key={stop.id}>
-            {/* Stop */}
-            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 hover:border-blue-300 transition-colors">
-              <div className="flex items-start gap-3">
-                {/* Icon + title + details */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    {stop.type === 'hotel' ? (
-                      <BedDouble size={14} strokeWidth={2} className="text-amber-600 flex-shrink-0" />
-                    ) : (
-                      <Car size={14} strokeWidth={2} className="text-blue-600 flex-shrink-0" />
-                    )}
-                    <span className="text-xs font-semibold text-slate-600 uppercase">
-                      {stop.type === 'hotel' ? 'Hotel' : 'Transporte'}
+    <div className="max-w-2xl mx-auto py-8">
+      {/* Timeline */}
+      <div className="relative">
+        {/* Vertical line */}
+        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-violet-200 to-blue-200" />
+        
+        {/* Stops */}
+        <div className="space-y-6">
+          {stops.map((stop, idx) => (
+            <div key={stop.id} className="relative pl-20">
+              {/* Dot */}
+              <div className="absolute -left-3 top-1.5 w-5 h-5 rounded-full border-2 border-white shadow-md"
+                style={{
+                  backgroundColor: stop.type === 'hotel' ? '#f59e0b' : '#3b82f6'
+                }} />
+              
+              {/* Card */}
+              <div className="bg-white rounded-lg border border-slate-200 p-4 hover:shadow-md hover:border-slate-300 transition-all">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      {stop.type === 'hotel' ? (
+                        <BedDouble size={13} strokeWidth={2} className="text-amber-600" />
+                      ) : (
+                        <Car size={13} strokeWidth={2} className="text-blue-600" />
+                      )}
+                      <h3 className="text-sm font-semibold text-slate-900">{stop.title}</h3>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-2">{stop.location}</p>
+                    <span className="text-xs text-slate-400">
+                      {formatDate(stop.startDay)}
+                      {stop.dayCount > 1 && ` • ${stop.dayCount}d`}
                     </span>
                   </div>
-                  <h4 className="text-sm font-semibold text-slate-900 truncate">{stop.title}</h4>
-                  <p className="text-xs text-slate-500 line-clamp-1">{stop.location}</p>
-                  <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
-                    <Calendar size={11} strokeWidth={2} />
-                    {formatDate(stop.startDay)}
-                    {stop.dayCount > 1 && <span>• {stop.dayCount}d</span>}
-                  </div>
-                </div>
-                
-                {/* Distance badge */}
-                {idx < stops.length - 1 && segments[idx]?.distanceKm && (
-                  <div className={`flex-shrink-0 text-right`}>
-                    <div className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${
-                      segments[idx].countryChange
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {segments[idx].distanceKm} km
+                  
+                  {/* Distance badge */}
+                  {stop.distanceToPrevious !== undefined && (
+                    <div className={`flex-shrink-0 text-right`}>
+                      <div className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${
+                        stop.previousCountry !== stop.country
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {stop.distanceToPrevious} km
+                      </div>
                     </div>
-                    {segments[idx].countryChange && (
-                      <span className="text-xs text-amber-600 font-medium mt-1 block">Cambio país</span>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
+              
+              {/* Arrow */}
+              {idx < stops.length - 1 && (
+                <div className="flex justify-center -ml-14 my-2 text-slate-300">
+                  <div className="text-lg">↓</div>
+                </div>
+              )}
             </div>
-            
-            {/* Arrow */}
-            {idx < stops.length - 1 && (
-              <div className="flex justify-center py-1.5">
-                <div className="text-slate-300 text-lg">↓</div>
-              </div>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   )
