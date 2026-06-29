@@ -393,7 +393,6 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const [dayNotes, setDayNotes] = useState<Record<string, string>>({})
   const [weather, setWeather] = useState<Record<string, WeatherDay>>({})
   const [selDay, setSelDay] = useState<string | null>(null)
-  const [showMap, setShowMap] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editEvent, setEditEvent] = useState<Event | null>(null)
@@ -770,18 +769,17 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
               </h2>
               <div className="flex gap-2">
                 {eventsWithCoords.length > 0 && (
-                  <button onClick={() => setShowMap(v => !v)}
-                    className={`btn-secondary text-sm flex items-center gap-1.5 ${showMap ? 'bg-blue-50 border-blue-300 text-blue-700' : ''}`}>
+                  <a href={`https://www.google.com/maps/dir/${eventsWithCoords.map(e => `${e.lat},${e.lng}`).join('/')}`}
+                    target="_blank" rel="noopener"
+                    className="btn-secondary text-sm flex items-center gap-1.5">
                     <Map size={14} /> Mapa
-                  </button>
+                  </a>
                 )}
                 <button onClick={openNew} className="btn-primary text-sm flex items-center gap-1.5"><Plus size={14} strokeWidth={2.5} /> Añadir</button>
               </div>
             </div>
 
-            {showMap && eventsWithCoords.length > 0 && (
-              <div className="card mb-4 overflow-hidden h-64"><DayMap events={eventsWithCoords} /></div>
-            )}
+            {/* Mapa Modal Fullscreen - ELIMINADO */}
 
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
               <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1 flex items-center gap-1.5"><NotebookPen size={11} strokeWidth={2} /> Notas del día</div>
