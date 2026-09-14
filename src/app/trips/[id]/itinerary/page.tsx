@@ -649,6 +649,341 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const isGroundTransport = form.category === 'transport' && form.travel_mode !== 'flight'
   const isAccom = form.category === 'hotel'
 
+  // El formulario vive en dos sitios: incrustado en la vista de día y dentro
+  // de una ventana sobre la rejilla, para poder editar sin salir de ella.
+  const eventForm = (
+    <div className="card p-5 mb-4 border-blue-200 bg-blue-50/30">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="font-semibold text-slate-800">{(() => {
+          const labels: Record<string,string> = {transport:'Transporte',hotel:'Alojamiento',activity:'Actividad',meal:'Comida',other:'Otro'}
+          const cat = labels[form.category] || 'Elemento'
+          return editEvent ? `Editar ${cat.toLowerCase()}` : `Nuevo ${cat.toLowerCase()}`
+        })()}</h3>
+        <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+      </div>
+
+      <div className="space-y-3">
+        {/* TÍTULO */}
+        <div>
+          <label className="label">Título *</label>
+          <input className="input" value={form.title} onChange={e => upd('title', e.target.value)}
+            placeholder={isFlight ? 'VUELO MAD → MIA' : 'Nombre del evento'} autoFocus />
+        </div>
+
+        {/* FECHA — hide for accommodation (uses checkin date) */}
+        {!isAccom && (
+        <div>
+          <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Fecha del evento</label>
+          <input className="input" type="date" value={form.event_date || selDay || ''}
+            onChange={e => upd('event_date', e.target.value)}
+            min={trip.start_date} max={trip.end_date} />
+        </div>
+        )}
+
+        {/* NO ADMITE CAMBIO */}
+        <div>
+          <button type="button" onClick={() => upd('fixed_time', !form.fixed_time)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+              form.fixed_time
+                ? 'bg-red-50 text-red-700 border-red-300'
+                : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+            }`}>
+            <AlertTriangle size={13} strokeWidth={2} />
+            {form.fixed_time ? 'Fecha u hora que no admite cambio' : 'Se puede mover de fecha u hora'}
+          </button>
+        </div>
+
+        {/* CATEGORÍA */}
+        <div>
+          <label className="label">Categoría</label>
+          <select className="input" value={form.category} onChange={e => upd('category', e.target.value)}>
+            {Object.entries(CAT_CONFIG).map(([k, v]) => (
+              <option key={k} value={k}>{v.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* TRAVEL MODE — solo si es Transport */}
+        {form.category === 'transport' && (
+          <div>
+            <label className="label">Tipo de transporte</label>
+            <select className="input" value={form.travel_mode || 'driving'} onChange={e => upd('travel_mode', e.target.value)}>
+              <option value="driving">Coche</option>
+              <option value="train">Tren</option>
+              <option value="walking">A pie</option>
+              <option value="bicycling">Bicicleta</option>
+              <option value="transit">Transporte público</option>
+              <option value="flight">Vuelo</option>
+              <option value="boat">Barco</option>
+            </select>
+          </div>
+        )}
+
+        {/* FORMULARIO VUELO */}
+        {isFlight && (
+          <>
+            {/* Número de escalas */}
+            <div>
+              <label className="label">Escalas</label>
+              <div className="flex gap-2">
+                {[
+                  { n: 0, label: 'Directo' },
+                  { n: 1, label: '1 escala' },
+                  { n: 2, label: '2 escalas' },
+                ].map(o => (
+                  <button key={o.n} type="button"
+                    onClick={() => setNumStops(o.n)}
+                    className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${
+                      form.num_stops === o.n
+                        ? 'bg-blue-600 text-white border-blue-600 shadow'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                    }`}>
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Segment forms */}
+            {segments.map((seg, i) => (
+              <SegmentForm key={i} seg={seg} idx={i} total={segments.length} onChange={updateSegment} />
+            ))}
+          </>
+        )}
+
+        {/* FORMULARIO COCHE/TRANSPORTE (NO vuelo, NO alojamiento) */}
+        {!isFlight && !isAccom && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">{isGroundTransport ? 'Hora de salida' : 'Hora de inicio'}</label>
+                <input className="input" type="time" value={form.time || ''} onChange={e => upd('time', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">{isGroundTransport ? 'Hora de llegada' : 'Hora de fin'}</label>
+                <input className="input" type="time" value={form.end_time || ''} onChange={e => upd('end_time', e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label className="label">Lugar</label>
+              <LocationPicker 
+                value={form.location} 
+                onChange={(location) => upd('location', location)}
+                placeholder="Buscar lugar..." 
+              />
+            </div>
+          </>
+        )}
+
+        {/* FORMULARIO ALOJAMIENTO */}
+        {isAccom && (
+          <div className="space-y-4">
+            {/* Subtipo */}
+            <div>
+              <label className="label">Tipo de alojamiento</label>
+              <div className="flex gap-2 flex-wrap">
+                {['Hotel','Apartamento','Casa rural','Hostal','Resort','Otro'].map(t => (
+                  <button key={t} type="button"
+                    onClick={() => upd('accom_type', t.toLowerCase())}
+                    className={`px-3 py-1.5 rounded-xl text-sm border transition-all ${
+                      form.accom_type === t.toLowerCase()
+                        ? 'bg-green-600 text-white border-green-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-green-300'
+                    }`}>{t}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* SECCIÓN: RESERVA */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
+              <div className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Datos de reserva</div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="label">Nº Reserva</label>
+                  <input className="input" value={form.accom_booking_ref} onChange={e => upd('accom_booking_ref', e.target.value)} placeholder="6749117536" />
+                </div>
+                <div>
+                  <label className="label">PIN (confidencial)</label>
+                  <input className="input" value={form.accom_pin} onChange={e => upd('accom_pin', e.target.value)} placeholder="2697" />
+                </div>
+                <div>
+                  <label className="label flex items-center gap-1"><Phone size={11} strokeWidth={1.8} /> Teléfono</label>
+                  <input className="input" type="tel" value={form.accom_phone} onChange={e => upd('accom_phone', e.target.value)} placeholder="+34 901 234 567" />
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN: CHECK-IN / CHECK-OUT */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-3">
+              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Check-in / Check-out</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Entrada (fecha)</label>
+                  <input className="input" type="date" value={form.accom_checkin_date} onChange={e => upd('accom_checkin_date', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">⏰ Entrada (hora)</label>
+                  <input className="input" type="time" value={form.accom_checkin_time} onChange={e => upd('accom_checkin_time', e.target.value)} placeholder="15:00" />
+                </div>
+                <div>
+                  <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Salida (fecha)</label>
+                  <input className="input" type="date" value={form.accom_checkout_date} onChange={e => upd('accom_checkout_date', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">⏰ Salida (hora)</label>
+                  <input className="input" type="time" value={form.accom_checkout_time} onChange={e => upd('accom_checkout_time', e.target.value)} placeholder="10:00" />
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN: UBICACIÓN Y CONTACTO */}
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-3">
+              <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Ubicación</div>
+              <div>
+                <label className="label flex items-center gap-1"><MapPin size={11} strokeWidth={1.8} /> Dirección</label>
+                <input className="input" value={form.accom_address} onChange={e => upd('accom_address', e.target.value)} placeholder="Paseos de la Mota, s/n, 49600 Benavente" />
+              </div>
+              <div>
+                <label className="label flex items-center gap-1"><Globe size={11} strokeWidth={1.8} /> Web / Link reserva</label>
+                <input className="input" type="url" value={form.accom_web} onChange={e => upd('accom_web', e.target.value)} placeholder="https://booking.com/..." />
+              </div>
+            </div>
+
+            {/* SECCIÓN: HUÉSPEDES Y HABITACIÓN */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="label flex items-center gap-1"><Users size={11} strokeWidth={1.8} /> Adultos</label>
+                <input className="input" type="number" min="1" value={form.accom_guests_adults} onChange={e => upd('accom_guests_adults', e.target.value)} placeholder="2" />
+              </div>
+              <div>
+                <label className="label flex items-center gap-1"><Users size={11} strokeWidth={1.8} /> Niños</label>
+                <input className="input" type="number" min="0" value={form.accom_guests_children} onChange={e => upd('accom_guests_children', e.target.value)} placeholder="2" />
+              </div>
+              <div>
+                <label className="label flex items-center gap-1"><Hash size={11} strokeWidth={1.8} /> Habitación / Apt</label>
+                <input className="input" value={form.accom_room} onChange={e => upd('accom_room', e.target.value)} placeholder="Apt. 4B" />
+              </div>
+            </div>
+
+            {/* SECCIÓN: SERVICIOS */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
+              <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Servicios incluidos</div>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  {k:'accom_breakfast', Icon: Utensils, label:'Desayuno'},
+                  {k:'accom_parking_included', Icon: ParkingSquare, label:'Parking'},
+                  {k:'accom_pool', Icon: Droplets, label:'Piscina'},
+                  {k:'accom_wifi', Icon: Wifi, label:'WiFi'},
+                  {k:'accom_ac', Icon: Snowflake, label:'A/C'},
+                  {k:'accom_pets', Icon: Dog, label:'Mascotas'},
+                ] as {k:string;Icon:any;label:string}[]).map(a => (
+                  <button key={a.k} type="button"
+                    onClick={() => upd(a.k, !form[a.k])}
+                    className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs border transition-all ${
+                      form[a.k]
+                        ? 'bg-amber-100 text-amber-700 border-amber-300 font-medium'
+                        : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                    }`}>
+                    <a.Icon size={12} strokeWidth={1.8} /> {a.label}
+                  </button>
+                ))}
+              </div>
+              {form.accom_parking_included && (
+                <div>
+                  <label className="label flex items-center gap-1"><Car size={11} strokeWidth={1.8} /> Detalles parking</label>
+                  <input className="input" value={form.accom_parking_info} onChange={e => upd('accom_parking_info', e.target.value)} placeholder="Incluido · acceso por Collins Ave." />
+                </div>
+              )}
+            </div>
+
+            {/* SECCIÓN: CANCELACIÓN */}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-3">
+              <div className="text-xs font-semibold text-red-700 uppercase tracking-wide flex items-center gap-1"><AlertTriangle size={11} strokeWidth={2} /> Cancelación</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Gratis hasta</label>
+                  <input className="input" type="date" value={form.accom_cancel_date} onChange={e => upd('accom_cancel_date', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Cargo después</label>
+                  <input className="input" value={form.accom_cancel_fee} onChange={e => upd('accom_cancel_fee', e.target.value)} placeholder="$1.600 / 100%" />
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN: NOTAS DE ACCESO */}
+            <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+              <label className="label flex items-center gap-1"><MapPin size={11} strokeWidth={1.8} /> Acceso / Indicaciones</label>
+              <textarea className="input" rows={2} value={form.accom_notes} onChange={e => upd('accom_notes', e.target.value)} placeholder="Recogida de llaves, código de acceso, parking..." />
+            </div>
+          </div>
+        )}
+
+        {/* NOTAS — al final de todo */}
+        <div>
+          <label className="label">Notas</label>
+          <textarea className="input" rows={2} value={form.note} onChange={e => upd('note', e.target.value)} placeholder="Notas adicionales..." />
+        </div>
+
+        {/* Coste + Moneda + Pagado */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1"><CreditCard size={11} strokeWidth={1.8} /> Pago</div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-2">
+              <label className="label">Importe</label>
+              <input className="input" type="number" value={form.cost} onChange={e => upd('cost', e.target.value)} placeholder="0" />
+            </div>
+            <div>
+              <label className="label">Moneda</label>
+              <select className="input" value={form.currency || trip.currency} onChange={e => upd('currency', e.target.value)}>
+                {['USD','EUR','GBP','JPY','CHF','CAD','AUD','MXN','BRL'].map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="button"
+              onClick={() => upd('paid', !form.paid)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                form.paid
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                  : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+              }`}>
+              <span>{form.paid ? '✓' : '○'}</span>
+              {form.paid ? 'Pagado' : 'Pendiente de pago'}
+            </button>
+          </div>
+        </div>
+        {!isAccom && (
+        <>
+        <div>
+          <label className="label flex items-center gap-1"><Ticket size={11} strokeWidth={1.8} /> Billetes / voucher</label>
+          <input className="input" type="url" value={form.ticket_url} onChange={e => upd('ticket_url', e.target.value)} placeholder="https://drive.google.com/..." />
+        </div>
+        <div>
+          <label className="label flex items-center gap-1"><FileCheck2 size={11} strokeWidth={1.8} /> Confirmación de compra</label>
+          <input className="input" type="url" value={form.confirmation_url} onChange={e => upd('confirmation_url', e.target.value)} placeholder="https://drive.google.com/..." />
+          <p className="text-xs text-slate-400 mt-1">Resguardo de la reserva cuando los billetes aún no están emitidos.</p>
+        </div>
+        </>
+        )}
+        <div>
+          <label className="label flex items-center gap-1"><Shield size={11} strokeWidth={1.8} /> Seguro de viaje</label>
+          <input className="input" type="url" value={form.insurance_url} onChange={e => upd('insurance_url', e.target.value)} placeholder="https://drive.google.com/..." />
+        </div>
+      </div>
+
+      <div className="flex gap-2 mt-5">
+        <button onClick={handleSave} disabled={saving || !form.title.trim()}
+          className="btn-primary flex-1 py-2.5 disabled:opacity-50">
+          {saving ? 'Guardando...' : editEvent ? 'Actualizar' : 'Añadir evento'}
+        </button>
+        <button onClick={() => setShowForm(false)} className="btn-secondary px-4">Cancelar</button>
+      </div>
+    </div>
+  )
+
   return (
     <>
     <Script 
@@ -698,7 +1033,18 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
             <WeekView
               trip={trip} events={events} days={days}
               onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }}
+              onEventClick={ev => { setSelDay(ev.day); openEdit(ev) }}
             />
+          </div>
+        )}
+
+        {/* Ficha del evento sobre la rejilla, sin salir de ella */}
+        {viewMode === 'week' && showForm && (
+          <div className="fixed inset-0 z-50 bg-slate-900/40 overflow-y-auto"
+            onClick={() => setShowForm(false)}>
+            <div className="max-w-2xl mx-auto px-4 py-8" onClick={e => e.stopPropagation()}>
+              {eventForm}
+            </div>
           </div>
         )}
 
@@ -833,338 +1179,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
 
             {/* ── FORM ── */}
-            {showForm && (
-              <div className="card p-5 mb-4 border-blue-200 bg-blue-50/30">
-                <div className="flex items-center justify-between mb-5">
-                  <h3 className="font-semibold text-slate-800">{(() => {
-                    const labels: Record<string,string> = {transport:'Transporte',hotel:'Alojamiento',activity:'Actividad',meal:'Comida',other:'Otro'}
-                    const cat = labels[form.category] || 'Elemento'
-                    return editEvent ? `Editar ${cat.toLowerCase()}` : `Nuevo ${cat.toLowerCase()}`
-                  })()}</h3>
-                  <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
-                </div>
-
-                <div className="space-y-3">
-                  {/* TÍTULO */}
-                  <div>
-                    <label className="label">Título *</label>
-                    <input className="input" value={form.title} onChange={e => upd('title', e.target.value)}
-                      placeholder={isFlight ? 'VUELO MAD → MIA' : 'Nombre del evento'} autoFocus />
-                  </div>
-
-                  {/* FECHA — hide for accommodation (uses checkin date) */}
-                  {!isAccom && (
-                  <div>
-                    <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Fecha del evento</label>
-                    <input className="input" type="date" value={form.event_date || selDay || ''}
-                      onChange={e => upd('event_date', e.target.value)}
-                      min={trip.start_date} max={trip.end_date} />
-                  </div>
-                  )}
-
-                  {/* NO ADMITE CAMBIO */}
-                  <div>
-                    <button type="button" onClick={() => upd('fixed_time', !form.fixed_time)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-                        form.fixed_time
-                          ? 'bg-red-50 text-red-700 border-red-300'
-                          : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-                      }`}>
-                      <AlertTriangle size={13} strokeWidth={2} />
-                      {form.fixed_time ? 'Fecha u hora que no admite cambio' : 'Se puede mover de fecha u hora'}
-                    </button>
-                  </div>
-
-                  {/* CATEGORÍA */}
-                  <div>
-                    <label className="label">Categoría</label>
-                    <select className="input" value={form.category} onChange={e => upd('category', e.target.value)}>
-                      {Object.entries(CAT_CONFIG).map(([k, v]) => (
-                        <option key={k} value={k}>{v.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* TRAVEL MODE — solo si es Transport */}
-                  {form.category === 'transport' && (
-                    <div>
-                      <label className="label">Tipo de transporte</label>
-                      <select className="input" value={form.travel_mode || 'driving'} onChange={e => upd('travel_mode', e.target.value)}>
-                        <option value="driving">Coche</option>
-                        <option value="train">Tren</option>
-                        <option value="walking">A pie</option>
-                        <option value="bicycling">Bicicleta</option>
-                        <option value="transit">Transporte público</option>
-                        <option value="flight">Vuelo</option>
-                        <option value="boat">Barco</option>
-                      </select>
-                    </div>
-                  )}
-
-                  {/* FORMULARIO VUELO */}
-                  {isFlight && (
-                    <>
-                      {/* Número de escalas */}
-                      <div>
-                        <label className="label">Escalas</label>
-                        <div className="flex gap-2">
-                          {[
-                            { n: 0, label: 'Directo' },
-                            { n: 1, label: '1 escala' },
-                            { n: 2, label: '2 escalas' },
-                          ].map(o => (
-                            <button key={o.n} type="button"
-                              onClick={() => setNumStops(o.n)}
-                              className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${
-                                form.num_stops === o.n
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow'
-                                  : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
-                              }`}>
-                              {o.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Segment forms */}
-                      {segments.map((seg, i) => (
-                        <SegmentForm key={i} seg={seg} idx={i} total={segments.length} onChange={updateSegment} />
-                      ))}
-                    </>
-                  )}
-
-                  {/* FORMULARIO COCHE/TRANSPORTE (NO vuelo, NO alojamiento) */}
-                  {!isFlight && !isAccom && (
-                    <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="label">{isGroundTransport ? 'Hora de salida' : 'Hora de inicio'}</label>
-                          <input className="input" type="time" value={form.time || ''} onChange={e => upd('time', e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="label">{isGroundTransport ? 'Hora de llegada' : 'Hora de fin'}</label>
-                          <input className="input" type="time" value={form.end_time || ''} onChange={e => upd('end_time', e.target.value)} />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="label">Lugar</label>
-                        <LocationPicker 
-                          value={form.location} 
-                          onChange={(location) => upd('location', location)}
-                          placeholder="Buscar lugar..." 
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {/* FORMULARIO ALOJAMIENTO */}
-                  {isAccom && (
-                    <div className="space-y-4">
-                      {/* Subtipo */}
-                      <div>
-                        <label className="label">Tipo de alojamiento</label>
-                        <div className="flex gap-2 flex-wrap">
-                          {['Hotel','Apartamento','Casa rural','Hostal','Resort','Otro'].map(t => (
-                            <button key={t} type="button"
-                              onClick={() => upd('accom_type', t.toLowerCase())}
-                              className={`px-3 py-1.5 rounded-xl text-sm border transition-all ${
-                                form.accom_type === t.toLowerCase()
-                                  ? 'bg-green-600 text-white border-green-600'
-                                  : 'bg-white text-slate-600 border-slate-200 hover:border-green-300'
-                              }`}>{t}</button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* SECCIÓN: RESERVA */}
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
-                        <div className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Datos de reserva</div>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <label className="label">Nº Reserva</label>
-                            <input className="input" value={form.accom_booking_ref} onChange={e => upd('accom_booking_ref', e.target.value)} placeholder="6749117536" />
-                          </div>
-                          <div>
-                            <label className="label">PIN (confidencial)</label>
-                            <input className="input" value={form.accom_pin} onChange={e => upd('accom_pin', e.target.value)} placeholder="2697" />
-                          </div>
-                          <div>
-                            <label className="label flex items-center gap-1"><Phone size={11} strokeWidth={1.8} /> Teléfono</label>
-                            <input className="input" type="tel" value={form.accom_phone} onChange={e => upd('accom_phone', e.target.value)} placeholder="+34 901 234 567" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* SECCIÓN: CHECK-IN / CHECK-OUT */}
-                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-3">
-                        <div className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Check-in / Check-out</div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Entrada (fecha)</label>
-                            <input className="input" type="date" value={form.accom_checkin_date} onChange={e => upd('accom_checkin_date', e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="label">⏰ Entrada (hora)</label>
-                            <input className="input" type="time" value={form.accom_checkin_time} onChange={e => upd('accom_checkin_time', e.target.value)} placeholder="15:00" />
-                          </div>
-                          <div>
-                            <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Salida (fecha)</label>
-                            <input className="input" type="date" value={form.accom_checkout_date} onChange={e => upd('accom_checkout_date', e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="label">⏰ Salida (hora)</label>
-                            <input className="input" type="time" value={form.accom_checkout_time} onChange={e => upd('accom_checkout_time', e.target.value)} placeholder="10:00" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* SECCIÓN: UBICACIÓN Y CONTACTO */}
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-3">
-                        <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Ubicación</div>
-                        <div>
-                          <label className="label flex items-center gap-1"><MapPin size={11} strokeWidth={1.8} /> Dirección</label>
-                          <input className="input" value={form.accom_address} onChange={e => upd('accom_address', e.target.value)} placeholder="Paseos de la Mota, s/n, 49600 Benavente" />
-                        </div>
-                        <div>
-                          <label className="label flex items-center gap-1"><Globe size={11} strokeWidth={1.8} /> Web / Link reserva</label>
-                          <input className="input" type="url" value={form.accom_web} onChange={e => upd('accom_web', e.target.value)} placeholder="https://booking.com/..." />
-                        </div>
-                      </div>
-
-                      {/* SECCIÓN: HUÉSPEDES Y HABITACIÓN */}
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <label className="label flex items-center gap-1"><Users size={11} strokeWidth={1.8} /> Adultos</label>
-                          <input className="input" type="number" min="1" value={form.accom_guests_adults} onChange={e => upd('accom_guests_adults', e.target.value)} placeholder="2" />
-                        </div>
-                        <div>
-                          <label className="label flex items-center gap-1"><Users size={11} strokeWidth={1.8} /> Niños</label>
-                          <input className="input" type="number" min="0" value={form.accom_guests_children} onChange={e => upd('accom_guests_children', e.target.value)} placeholder="2" />
-                        </div>
-                        <div>
-                          <label className="label flex items-center gap-1"><Hash size={11} strokeWidth={1.8} /> Habitación / Apt</label>
-                          <input className="input" value={form.accom_room} onChange={e => upd('accom_room', e.target.value)} placeholder="Apt. 4B" />
-                        </div>
-                      </div>
-
-                      {/* SECCIÓN: SERVICIOS */}
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
-                        <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Servicios incluidos</div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {([
-                            {k:'accom_breakfast', Icon: Utensils, label:'Desayuno'},
-                            {k:'accom_parking_included', Icon: ParkingSquare, label:'Parking'},
-                            {k:'accom_pool', Icon: Droplets, label:'Piscina'},
-                            {k:'accom_wifi', Icon: Wifi, label:'WiFi'},
-                            {k:'accom_ac', Icon: Snowflake, label:'A/C'},
-                            {k:'accom_pets', Icon: Dog, label:'Mascotas'},
-                          ] as {k:string;Icon:any;label:string}[]).map(a => (
-                            <button key={a.k} type="button"
-                              onClick={() => upd(a.k, !form[a.k])}
-                              className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs border transition-all ${
-                                form[a.k]
-                                  ? 'bg-amber-100 text-amber-700 border-amber-300 font-medium'
-                                  : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
-                              }`}>
-                              <a.Icon size={12} strokeWidth={1.8} /> {a.label}
-                            </button>
-                          ))}
-                        </div>
-                        {form.accom_parking_included && (
-                          <div>
-                            <label className="label flex items-center gap-1"><Car size={11} strokeWidth={1.8} /> Detalles parking</label>
-                            <input className="input" value={form.accom_parking_info} onChange={e => upd('accom_parking_info', e.target.value)} placeholder="Incluido · acceso por Collins Ave." />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* SECCIÓN: CANCELACIÓN */}
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-3">
-                        <div className="text-xs font-semibold text-red-700 uppercase tracking-wide flex items-center gap-1"><AlertTriangle size={11} strokeWidth={2} /> Cancelación</div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="label">Gratis hasta</label>
-                            <input className="input" type="date" value={form.accom_cancel_date} onChange={e => upd('accom_cancel_date', e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="label">Cargo después</label>
-                            <input className="input" value={form.accom_cancel_fee} onChange={e => upd('accom_cancel_fee', e.target.value)} placeholder="$1.600 / 100%" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* SECCIÓN: NOTAS DE ACCESO */}
-                      <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
-                        <label className="label flex items-center gap-1"><MapPin size={11} strokeWidth={1.8} /> Acceso / Indicaciones</label>
-                        <textarea className="input" rows={2} value={form.accom_notes} onChange={e => upd('accom_notes', e.target.value)} placeholder="Recogida de llaves, código de acceso, parking..." />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* NOTAS — al final de todo */}
-                  <div>
-                    <label className="label">Notas</label>
-                    <textarea className="input" rows={2} value={form.note} onChange={e => upd('note', e.target.value)} placeholder="Notas adicionales..." />
-                  </div>
-
-                  {/* Coste + Moneda + Pagado */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
-                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1"><CreditCard size={11} strokeWidth={1.8} /> Pago</div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="col-span-2">
-                        <label className="label">Importe</label>
-                        <input className="input" type="number" value={form.cost} onChange={e => upd('cost', e.target.value)} placeholder="0" />
-                      </div>
-                      <div>
-                        <label className="label">Moneda</label>
-                        <select className="input" value={form.currency || trip.currency} onChange={e => upd('currency', e.target.value)}>
-                          {['USD','EUR','GBP','JPY','CHF','CAD','AUD','MXN','BRL'].map(c => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button type="button"
-                        onClick={() => upd('paid', !form.paid)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-                          form.paid
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                            : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-                        }`}>
-                        <span>{form.paid ? '✓' : '○'}</span>
-                        {form.paid ? 'Pagado' : 'Pendiente de pago'}
-                      </button>
-                    </div>
-                  </div>
-                  {!isAccom && (
-                  <>
-                  <div>
-                    <label className="label flex items-center gap-1"><Ticket size={11} strokeWidth={1.8} /> Billetes / voucher</label>
-                    <input className="input" type="url" value={form.ticket_url} onChange={e => upd('ticket_url', e.target.value)} placeholder="https://drive.google.com/..." />
-                  </div>
-                  <div>
-                    <label className="label flex items-center gap-1"><FileCheck2 size={11} strokeWidth={1.8} /> Confirmación de compra</label>
-                    <input className="input" type="url" value={form.confirmation_url} onChange={e => upd('confirmation_url', e.target.value)} placeholder="https://drive.google.com/..." />
-                    <p className="text-xs text-slate-400 mt-1">Resguardo de la reserva cuando los billetes aún no están emitidos.</p>
-                  </div>
-                  </>
-                  )}
-                  <div>
-                    <label className="label flex items-center gap-1"><Shield size={11} strokeWidth={1.8} /> Seguro de viaje</label>
-                    <input className="input" type="url" value={form.insurance_url} onChange={e => upd('insurance_url', e.target.value)} placeholder="https://drive.google.com/..." />
-                  </div>
-                </div>
-
-                <div className="flex gap-2 mt-5">
-                  <button onClick={handleSave} disabled={saving || !form.title.trim()}
-                    className="btn-primary flex-1 py-2.5 disabled:opacity-50">
-                    {saving ? 'Guardando...' : editEvent ? 'Actualizar' : 'Añadir evento'}
-                  </button>
-                  <button onClick={() => setShowForm(false)} className="btn-secondary px-4">Cancelar</button>
-                </div>
-              </div>
-            )}
+            {showForm && eventForm}
 
             {/* ── EVENTS ── */}
             <div className="space-y-3">

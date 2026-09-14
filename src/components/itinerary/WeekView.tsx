@@ -1,6 +1,10 @@
 'use client'
 import type { Trip, Event } from '@/types'
-import { CAT_CONFIG, formatCurrency } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
+import {
+  Plane, BedDouble, Compass, UtensilsCrossed, Car, Tag, Bike, Bus, Footprints,
+  Waves, TrainFront, CheckCircle2, LucideIcon,
+} from 'lucide-react'
 
 /* Rejilla de planning: columnas = días, filas = tramos de 30 min.
    El bloque se dibuja con su duración real y lleva dentro sus notas,
@@ -11,14 +15,37 @@ const SLOT_H = 34          // alto de media hora
 const RAIL_W = 56          // columna de horas
 const DAY_W = 190          // ancho mínimo de cada día
 
-// paleta de la cuadrícula
+// Color por categoría, tomado de la paleta de la app.
+type Paleta = { bg: string; line: string; ink: string }
+const CAT_COLOR: Record<string, Paleta> = {
+  transport: { bg: '#E0EDFF', line: '#93B4E8', ink: '#1D4ED8' },
+  hotel:     { bg: '#D1FAE5', line: '#6EE7B7', ink: '#047857' },
+  activity:  { bg: '#EDE9FE', line: '#C4B5FD', ink: '#6D28D9' },
+  meal:      { bg: '#FEF3C7', line: '#FCD34D', ink: '#B45309' },
+  other:     { bg: '#F1F5F9', line: '#CBD5E1', ink: '#475569' },
+}
 const C = {
-  ink: '#171B26', ink2: '#3E465A', muted: '#6B7489', faint: '#98A0B3',
-  rule: '#D6DAE4', ruleStrong: '#BFC5D3',
-  surface: '#FFFFFF', surface2: '#F7F8FB', shade: '#EDEEF2',
-  accent: '#27437A', accentSoft: '#E6EBF6', accentLine: '#A9BADC',
-  moss: '#41653F', mossSoft: '#E9EFE6', mossLine: '#B6C9B2',
-  shu: '#AE352A',
+  ink: '#0F172A', ink2: '#334155', muted: '#64748B', faint: '#94A3B8',
+  rule: '#E2E8F0', ruleStrong: '#CBD5E1',
+  surface: '#FFFFFF', accent: '#2563EB', shu: '#DC2626',
+}
+
+const CAT_LABEL: Record<string, string> = {
+  transport: 'Transporte', hotel: 'Alojamiento', activity: 'Actividad',
+  meal: 'Comida', other: 'Descanso',
+}
+
+const MODE_ICON: Record<string, LucideIcon> = {
+  flight: Plane, train: TrainFront, driving: Car, transit: Bus,
+  walking: Footprints, bicycling: Bike, boat: Waves,
+}
+const CAT_ICON: Record<string, LucideIcon> = {
+  hotel: BedDouble, activity: Compass, meal: UtensilsCrossed, other: Tag,
+}
+
+function eventIcon(ev: Event): LucideIcon {
+  if (ev.category === 'transport') return MODE_ICON[(ev as any).travel_mode] || Car
+  return CAT_ICON[ev.category] || Tag
 }
 
 function timeToMins(t?: string | null): number {
@@ -67,50 +94,32 @@ function dayPlaces(evs: Event[]): string {
   return seen.slice(0, 2).join(' · ')
 }
 
-/** Estilo del bloque a partir de la categoría y de si ya está contratado. */
-function blockStyle(ev: Event, fijo: boolean) {
-  const e = ev as any
-  const contratado = Boolean(e.ticket_url || e.confirmation_url || e.paid)
-  let s: React.CSSProperties = {
-    background: C.surface, borderColor: C.ruleStrong,
-    borderLeft: `3px solid ${C.accent}`,
-  }
-  let titleColor = C.ink
-  let weight = 700
-
-  if (ev.category === 'meal') {
-    s = { background: C.mossSoft, borderColor: C.mossLine }
-    titleColor = C.moss
-  } else if (ev.category === 'transport') {
-    s = { background: 'transparent', borderColor: C.ruleStrong, borderStyle: 'dashed' }
-    titleColor = C.muted; weight = 500
-  } else if (ev.category === 'other') {
-    s = { background: C.shade, borderColor: C.ruleStrong }
-    titleColor = C.muted; weight = 500
-  } else if (ev.category === 'hotel') {
-    const cfg = CAT_CONFIG.hotel
-    s = { background: cfg.bg, borderColor: cfg.color + '55', borderLeft: `3px solid ${cfg.color}` }
-    titleColor = cfg.color
-  }
-  if (contratado && ev.category !== 'meal' && ev.category !== 'transport') {
-    s = { background: C.accentSoft, borderColor: C.accentLine, borderLeft: `3px solid ${C.accent}` }
-    titleColor = C.ink
-  }
-  if (fijo) s.borderLeft = `3px solid ${C.shu}`
-  return { style: s, titleColor, weight }
-}
-
-/** Reparte en carriles los bloques que se solapan. */
+/** Reparte en carriles los bloques que se solapan.
+ *  Los carriles se cuentan por grupo de solape, no por día entero: así un
+ *  choque suelto a última hora no estrecha todos los bloques de la jornada. */
 function assignLanes(items: { start: number; end: number }[]) {
-  const lanes: number[] = []          // fin del último bloque de cada carril
-  const idx: number[] = []
-  items.forEach(it => {
+  const lane = new Array(items.length).fill(0)
+  const total = new Array(items.length).fill(1)
+  let grupo: number[] = []            // índices del grupo en curso
+  let lanes: number[] = []            // fin del último bloque de cada carril
+  let finGrupo = -Infinity
+
+  const cerrar = () => {
+    grupo.forEach(i => { total[i] = Math.max(1, lanes.length) })
+    grupo = []; lanes = []; finGrupo = -Infinity
+  }
+
+  items.forEach((it, i) => {
+    if (it.start >= finGrupo) cerrar()
     let l = lanes.findIndex(end => end <= it.start)
     if (l === -1) { lanes.push(it.end); l = lanes.length - 1 }
     else lanes[l] = it.end
-    idx.push(l)
+    lane[i] = l
+    grupo.push(i)
+    finGrupo = Math.max(finGrupo, it.end)
   })
-  return { lane: idx, total: Math.max(1, lanes.length) }
+  cerrar()
+  return { lane, total }
 }
 
 type Props = {
@@ -118,9 +127,10 @@ type Props = {
   events: Event[]
   days: string[]
   onDayClick: (day: string) => void
+  onEventClick?: (ev: Event) => void
 }
 
-export default function WeekView({ trip, events, days, onDayClick }: Props) {
+export default function WeekView({ trip, events, days, onDayClick, onEventClick }: Props) {
   // rango horario: 7:00–23:00 por defecto, ampliado si hay eventos fuera
   let startH = 7, endH = 23
   events.forEach(ev => {
@@ -137,7 +147,7 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
 
   return (
     <div>
-      <div className="overflow-auto rounded-sm border"
+      <div className="overflow-auto rounded-xl border shadow-sm"
         style={{ borderColor: C.ruleStrong, background: C.surface, maxHeight: 'calc(100vh - 200px)' }}>
         <div style={{ minWidth: RAIL_W + days.length * DAY_W }}>
 
@@ -152,7 +162,7 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
               return (
                 <button key={day} onClick={() => onDayClick(day)}
                   style={{ width: DAY_W, borderLeft: `1px solid ${C.rule}` }}
-                  className="flex-shrink-0 py-2 px-2 text-center hover:bg-slate-50 transition-colors">
+                  className="flex-shrink-0 py-2 px-2 text-center hover:bg-blue-50 transition-colors">
                   <span className="block font-mono uppercase" style={{ fontSize: 10.5, letterSpacing: '.14em', color: C.muted }}>
                     {dt.toLocaleDateString('es-ES', { weekday: 'long' })}
                   </span>
@@ -174,7 +184,7 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
               className="flex-shrink-0 relative sticky left-0 z-20">
               {ticks.map(m => (
                 <div key={m} style={{ top: yOf(m) - 7, color: m % 60 === 0 ? C.ink2 : C.faint }}
-                  className="absolute right-2 font-mono" >
+                  className="absolute right-2 font-mono">
                   <span style={{ fontSize: 10.5 }}>
                     {String(Math.floor(m / 60)).padStart(2, '0')}:{String(m % 60).padStart(2, '0')}
                   </span>
@@ -192,14 +202,13 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
               return (
                 <div key={day} style={{ width: DAY_W, borderLeft: `1px solid ${C.rule}` }}
                   className="flex-shrink-0 relative">
-                  {/* líneas horarias */}
                   {ticks.map(m => (
                     <div key={m} style={{
                       top: yOf(m),
                       borderTop: `1px solid ${m % 60 === 0 ? C.ruleStrong : C.rule}`,
                     }} className="absolute left-0 right-0" />
                   ))}
-                  <button className="absolute inset-0 w-full z-0 hover:bg-blue-50/20 transition-colors"
+                  <button className="absolute inset-0 w-full z-0 hover:bg-blue-50/30 transition-colors"
                     onClick={() => onDayClick(day)} aria-label={`Ver ${day}`} />
 
                   {dayEvents.map(({ ev, start, end }, i) => {
@@ -207,40 +216,59 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
                     const height = Math.max(yOf(Math.min(end, endH * 60)) - top, 22)
                     if (start >= endH * 60) return null
 
-                    const lines = noteLines((ev as any).note)
-                    const fijo = Boolean((ev as any).fixed_time)
-                    const { style, titleColor, weight } = blockStyle(ev, fijo)
-                    const w = 100 / total
+                    const e = ev as any
+                    const lines = noteLines(e.note)
+                    const fijo = Boolean(e.fixed_time)
+                    const contratado = Boolean(e.ticket_url || e.confirmation_url || e.paid)
+                    const pal = CAT_COLOR[ev.category] || CAT_COLOR.other
+                    const esTraslado = ev.category === 'transport'
+                    const Icon = eventIcon(ev)
+                    const w = 100 / total[i]
                     const overnight = end > endH * 60
 
                     return (
                       <button key={ev.id}
-                        onClick={e => { e.stopPropagation(); onDayClick(ev.day) }}
+                        onClick={evt => {
+                          evt.stopPropagation()
+                          if (onEventClick) onEventClick(ev)
+                          else onDayClick(ev.day)
+                        }}
                         style={{
                           top, height,
                           left: `calc(${lane[i] * w}% + 3px)`,
                           width: `calc(${w}% - 6px)`,
-                          borderWidth: 1, borderRadius: 2,
-                          ...style,
+                          background: esTraslado ? 'transparent' : pal.bg,
+                          borderWidth: 1, borderRadius: 6,
+                          borderColor: pal.line,
+                          borderStyle: esTraslado ? 'dashed' : 'solid',
+                          borderLeft: `3px solid ${fijo ? C.shu : pal.ink}`,
                         }}
-                        className="absolute z-10 px-2 py-1.5 text-left overflow-hidden hover:brightness-[.97] transition-all">
-                        <span className="block font-mono" style={{ fontSize: 9.5, letterSpacing: '.04em', color: C.faint }}>
-                          {ev.time?.slice(0, 5)}
-                          {(ev as any).end_time ? `–${(ev as any).end_time.slice(0, 5)}` : ''}
-                          {overnight ? ' →' : ''}
+                        className="absolute z-10 px-2 py-1.5 text-left overflow-hidden hover:brightness-[.96] hover:shadow-md transition-all">
+                        <span className="flex items-center gap-1 font-mono" style={{ fontSize: 9.5, letterSpacing: '.04em', color: pal.ink }}>
+                          <Icon size={10} strokeWidth={2} className="flex-shrink-0 opacity-80" />
+                          <span className="opacity-75">
+                            {ev.time?.slice(0, 5)}
+                            {e.end_time ? `–${e.end_time.slice(0, 5)}` : ''}
+                            {overnight ? ' →' : ''}
+                          </span>
+                          {contratado && <CheckCircle2 size={10} strokeWidth={2.4} className="flex-shrink-0" />}
                         </span>
-                        <span className="block leading-tight" style={{ fontSize: 12.5, fontWeight: weight, color: titleColor }}>
+                        <span className="block leading-tight" style={{
+                          fontSize: 12.5, color: pal.ink,
+                          fontWeight: esTraslado || ev.category === 'other' ? 500 : 700,
+                        }}>
                           {ev.title}
                         </span>
                         {height > 60 && lines.map((l, k) => (
                           <span key={k} className="block leading-snug mt-0.5"
-                            style={{ fontSize: 10.8, color: isWarn(l) ? C.shu : C.muted, fontWeight: isWarn(l) ? 500 : 400 }}>
+                            style={{ fontSize: 10.8, color: isWarn(l) ? C.shu : C.ink2, opacity: isWarn(l) ? 1 : .75, fontWeight: isWarn(l) ? 500 : 400 }}>
                             {l}
                           </span>
                         ))}
                         {ev.cost > 0 && height > 44 && (
-                          <span className="block font-mono mt-0.5" style={{ fontSize: 9.5, color: C.ink2 }}>
-                            {formatCurrency(ev.cost, (ev as any).currency || trip.currency)}
+                          <span className="inline-block font-mono mt-1 px-1.5 py-0.5 rounded"
+                            style={{ fontSize: 9.5, color: pal.ink, background: '#FFFFFFAA', border: `1px solid ${pal.line}` }}>
+                            {formatCurrency(ev.cost, e.currency || trip.currency)}
                           </span>
                         )}
                       </button>
@@ -254,23 +282,28 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
       </div>
 
       {/* ── leyenda ── */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3 px-1" style={{ fontSize: 12, color: C.muted }}>
-        <span className="inline-flex items-center gap-2">
-          <i style={{ width: 20, height: 11, borderRadius: 2, background: C.surface, border: `1px solid ${C.ruleStrong}`, borderLeft: `3px solid ${C.accent}` }} /> Visita
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 px-1" style={{ fontSize: 12, color: C.muted }}>
+        {(['transport', 'hotel', 'activity', 'meal', 'other'] as const).map(k => {
+          const p = CAT_COLOR[k]
+          return (
+            <span key={k} className="inline-flex items-center gap-1.5">
+              <i style={{
+                width: 20, height: 12, borderRadius: 3,
+                background: k === 'transport' ? 'transparent' : p.bg,
+                border: `1px ${k === 'transport' ? 'dashed' : 'solid'} ${p.line}`,
+                borderLeft: `3px solid ${p.ink}`,
+              }} />
+              {CAT_LABEL[k]}
+            </span>
+          )
+        })}
+        <span className="inline-flex items-center gap-1.5">
+          <CheckCircle2 size={12} strokeWidth={2.4} style={{ color: C.ink2 }} /> Contratado o pagado
         </span>
-        <span className="inline-flex items-center gap-2">
-          <i style={{ width: 20, height: 11, borderRadius: 2, background: C.accentSoft, border: `1px solid ${C.accentLine}` }} /> Contratado o pagado
+        <span className="inline-flex items-center gap-1.5" style={{ color: C.shu }}>
+          <i style={{ width: 20, height: 12, borderRadius: 3, background: '#FFF', border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.shu}` }} />
+          No admite cambio
         </span>
-        <span className="inline-flex items-center gap-2">
-          <i style={{ width: 20, height: 11, borderRadius: 2, background: C.mossSoft, border: `1px solid ${C.mossLine}` }} /> Comida
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <i style={{ width: 20, height: 11, borderRadius: 2, background: C.shade, border: `1px solid ${C.ruleStrong}` }} /> Descanso
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <i style={{ width: 20, height: 11, borderRadius: 2, background: 'transparent', border: `1px dashed ${C.ruleStrong}` }} /> Traslado
-        </span>
-        <span style={{ color: C.shu }}>Borde rojo · no admite cambio</span>
       </div>
     </div>
   )
