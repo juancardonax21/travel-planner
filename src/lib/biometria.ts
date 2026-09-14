@@ -112,7 +112,9 @@ export async function desbloquear(): Promise<boolean> {
       publicKey: {
         challenge: reto(),
         rpId: location.hostname,
-        allowCredentials: [{ type: 'public-key', id: deB64(id) }],
+        // Sin 'internal' Safari no da por hecho que la credencial está en el
+        // propio dispositivo y puede no ofrecer Face ID.
+        allowCredentials: [{ type: 'public-key', id: deB64(id), transports: ['internal'] as AuthenticatorTransport[] }],
         userVerification: 'required',
         timeout: 60000,
       },
