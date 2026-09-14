@@ -170,6 +170,45 @@ function hitosDelDia(events: Event[], day: string) {
   return out.sort((a, b) => a.t - b.t)
 }
 
+/** El prefijo del título es lo único que dice de quién es un evento cuando la
+ *  familia se separa: "Mamá · Sumiyoshi Taisha", "Papá y niños · Universal". */
+const prefijoDe = (ev: Event): string | null => {
+  const i = (ev.title || '').indexOf(' · ')
+  return i > 0 && i <= 24 ? ev.title.slice(0, i) : null
+}
+
+/** Carriles por plan, no por geometría.
+ *
+ *  El reparto normal busca el primer carril libre, así que en cuanto un plan
+ *  deja un hueco el otro se mete dentro: a las 13:00 terminaba Nintendo World
+ *  y la comida de mamá ocupaba el carril de papá. Aquí cada plan se queda en
+ *  su columna de la mañana a la noche.
+ *
+ *  Devuelve null -y manda el reparto geométrico- si el día no tiene dos planes
+ *  claros, si dos cosas del mismo plan se pisan, o si algo común se cruza con
+ *  un plan: en esos casos los carriles fijos dibujarían bloques encima. */
+function carrilesPorPlan(items: Trozo[]) {
+  const planes: string[] = []
+  for (const t of items) {
+    const p = prefijoDe(t.ev)
+    if (p && !planes.includes(p)) planes.push(p)
+  }
+  if (planes.length < 2) return null
+  const se_pisan = (a: Trozo, b: Trozo) => a.start < b.end && a.end > b.start
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      if (!se_pisan(items[i], items[j])) continue
+      const a = prefijoDe(items[i].ev), b = prefijoDe(items[j].ev)
+      if (a === b) return null          // dos cosas del mismo plan a la vez
+      if (!a || !b) return null         // algo común encima de un plan
+    }
+  }
+  return {
+    lane: items.map(t => { const p = prefijoDe(t.ev); return p ? planes.indexOf(p) : 0 }),
+    total: items.map(t => (prefijoDe(t.ev) ? planes.length : 1)),
+  }
+}
+
 /** Reparte en carriles los bloques que se solapan.
  *  Los carriles se cuentan por grupo de solape, no por día entero: así un
  *  choque suelto a última hora no estrecha todos los bloques de la jornada. */
@@ -249,7 +288,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
      cruza la columna, porque parecería que valen para todos. */
   const porDia = days.map(day => {
     const todos = trozosDelDia(events, day, originMin, endH * 60)
-    const { lane, total } = assignLanes(todos)
+    const { lane, total } = carrilesPorPlan(todos) ?? assignLanes(todos)
     const bloques: Colocado[] = []
     const franjas: Colocado[] = []
     todos.forEach((t, i) => (t.momento ? franjas : bloques)
