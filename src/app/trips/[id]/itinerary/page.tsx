@@ -559,9 +559,16 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     }
     
     const firstSeg = segments[0]
-    const flightTime = (isFlight ? (firstSeg?.dep_time || form.time) : form.time) || '09:00'
+    // La hora del evento sale del bloque específico de cada tipo: la salida del
+    // primer segmento en los vuelos y la entrada en los alojamientos, que es la
+    // única hora que el formulario ofrece para ellos.
+    const startTime = (
+      isFlight ? (firstSeg?.dep_time || form.time)
+      : isAccom ? (form.accom_checkin_time || form.time)
+      : form.time
+    ) || '09:00'
     const payload: any = {
-      trip_id: id, day: (isAccom && form.accom_checkin_date) ? form.accom_checkin_date : (form.event_date || selDay), time: flightTime,
+      trip_id: id, day: (isAccom && form.accom_checkin_date) ? form.accom_checkin_date : (form.event_date || selDay), time: startTime,
       title: form.title, category: form.category, travel_mode: form.travel_mode || 'driving',
       location: form.location || null, lat: form.lat || null, lng: form.lng || null, note: form.note || null,
       cost: Number(form.cost) || 0,
