@@ -10,7 +10,8 @@ import TripNav from '@/components/layout/TripNav'
 import dynamic from 'next/dynamic'
 import WeekView, { MODE_LABEL } from '@/components/itinerary/WeekView'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
-import TripRoute from '@/components/itinerary/TripRoute'
+import PlanGeneral from '@/components/itinerary/PlanGeneral'
+import { pasosDelDia, formateaPasos } from '@/lib/pasos'
 import LocationPicker from '@/components/itinerary/LocationPicker'
 
 const DayMap = dynamic(() => import('@/components/map/DayMap'), { ssr: false })
@@ -403,7 +404,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const [form, setForm] = useState<any>({ ...EMPTY })
   const [segments, setSegments] = useState<Segment[]>([EMPTY_SEG()])
   const [saving, setSaving] = useState(false)
-  const [viewMode, setViewMode] = useState<'week'|'day'|'route'>('week')
+  const [viewMode, setViewMode] = useState<'week'|'day'|'route'>('route')
   const [showScanner, setShowScanner] = useState(false)
   const [pendingReturn, setPendingReturn] = useState<any>(null)
 
@@ -1093,7 +1094,10 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
         </div>
 
         {/* Trip Route */}
-        {viewMode === 'route' && <TripRoute trip={trip} events={events} />}
+        {viewMode === 'route' && (
+          <PlanGeneral trip={trip} events={events} days={days}
+            onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }} />
+        )}
 
         {/* Week view */}
         {viewMode === 'week' && (
@@ -1268,6 +1272,19 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
         {selDay && viewMode === 'day' && (
           <>
+            {(() => {
+              const p = pasosDelDia(dayEvents)
+              if (!p.pasos) return null
+              return (
+                <div className="flex items-center gap-2 mb-3 text-sm text-slate-500">
+                  <Footprints size={15} strokeWidth={1.8} className="text-slate-400" />
+                  <span><strong className="text-slate-700 font-semibold">~{formateaPasos(p.pasos)}</strong> pasos previstos</span>
+                  {p.kmAndando > 0 && (
+                    <span className="text-slate-400">· {p.kmAndando} km a pie en {p.tramos} {p.tramos === 1 ? 'tramo' : 'tramos'}</span>
+                  )}
+                </div>
+              )
+            })()}
             {dayW && (
               <div className="bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200 rounded-2xl p-3 mb-4 flex items-center gap-4 flex-wrap">
                 <span className="text-3xl">{weatherEmoji(dayW.icon)}</span>

@@ -11,8 +11,9 @@ export default function BloqueoBiometrico() {
 
   useEffect(() => {
     if (!estaActivado() || dentroDeGracia()) { setEstado('abierto'); return }
+    // No se pide Face ID solo: Safari exige un gesto del usuario para invocar
+    // WebAuthn, así que una llamada automática al cargar se descarta sin más.
     setEstado('bloqueado')
-    intentar()
   }, [])
 
   async function intentar() {
@@ -34,7 +35,7 @@ export default function BloqueoBiometrico() {
         </div>
         <h1 className="text-lg font-bold text-slate-900">Travel Planner está bloqueado</h1>
         <p className="text-slate-500 text-sm mt-1 mb-6">
-          {fallo ? 'No se pudo verificar. Inténtalo otra vez.' : 'Verifica tu identidad para continuar.'}
+          {fallo ? 'No se pudo verificar. Inténtalo otra vez.' : 'Toca para desbloquear con Face ID.'}
         </p>
         <button onClick={intentar}
           className="btn-primary w-full py-3 flex items-center justify-center gap-2">

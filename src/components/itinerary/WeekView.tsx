@@ -2,10 +2,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Trip, Event } from '@/types'
 import { formatCurrency } from '@/lib/utils'
+import { pasosDelDia, formateaPasos } from '@/lib/pasos'
 
 import {
   Plane, BedDouble, Compass, UtensilsCrossed, Car, Tag, Bike, Bus, Footprints,
-  TrainFront, TrainFrontTunnel, Train, Ship, CheckCircle2, Banknote, AlertTriangle, Info, LucideIcon,
+  TrainFront, TrainFrontTunnel, Train, Ship, CheckCircle2, Banknote, AlertTriangle, Info, Footprints as Pie, LucideIcon,
 } from 'lucide-react'
 
 /* Rejilla de planning: columnas = días, filas = tramos de 30 min.
@@ -258,6 +259,16 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                   <span className="block truncate" style={{ fontSize: 11.5, color: C.accent, minHeight: 16 }}>
                     {place}
                   </span>
+                  {(() => {
+                    const p = pasosDelDia(evs)
+                    if (!p.pasos) return null
+                    return (
+                      <span className="inline-flex items-center gap-1 mt-0.5" style={{ fontSize: 10.5, color: C.muted }}
+                        title={`Aproximado: ${p.kmAndando} km a pie en ${p.tramos} tramos, más lo que se anda dentro de cada sitio`}>
+                        <Pie size={10} strokeWidth={2} /> ~{formateaPasos(p.pasos)}
+                      </span>
+                    )
+                  })()}
                 </button>
               )
             })}
