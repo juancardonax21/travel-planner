@@ -1,4 +1,5 @@
 import type { Event } from '@/types'
+import { planDe } from '@/lib/planes'
 
 /* Pasos previstos de una jornada.
  *
@@ -37,8 +38,24 @@ function km(a: Event, b: Event): number {
 
 export type Pasos = { pasos: number; kmAndando: number; tramos: number }
 
-/** Calcula los pasos de un día a partir de sus eventos ya ordenados. */
+/** Pasos de un día.
+ *
+ *  Los días en que la familia se separa llevan dos planes en la misma
+ *  jornada, y sumarlos daría una cifra que no anda nadie. Se calcula cada
+ *  uno por su lado —con lo común incluido en los dos— y se devuelve el más
+ *  largo, que es el que dice cómo de dura es la jornada. */
 export function pasosDelDia(eventos: Event[]): Pasos {
+  const planes = Array.from(new Set(eventos.map(planDe).filter((p): p is string => !!p)))
+  if (planes.length > 1) {
+    const comunes = eventos.filter(e => !planDe(e))
+    return planes
+      .map(p => unPlan([...comunes, ...eventos.filter(e => planDe(e) === p)]))
+      .reduce((a, b) => (b.pasos > a.pasos ? b : a))
+  }
+  return unPlan(eventos)
+}
+
+function unPlan(eventos: Event[]): Pasos {
   const orden = [...eventos].sort((a, b) => (a.time || '').localeCompare(b.time || ''))
   let kmTotal = 0
   let tramos = 0

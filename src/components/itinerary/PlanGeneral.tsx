@@ -94,8 +94,6 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
     <div className="mb-4">
       {tramos.map((tr, i) => {
         const hotel = tr.hotel
-        const pasosTramo = tr.dias.reduce((s, d) =>
-          s + pasosDelDia(events.filter(e => e.day === d)).pasos, 0)
 
         return (
           <div key={i} className="relative pl-8 pb-2">
@@ -127,6 +125,7 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
                 {tr.dias.map(day => {
                   const evs = events.filter(e => e.day === day && e.category !== 'hotel')
                   const tit = titulares(evs)
+                  const pasos = pasosDelDia(events.filter(e => e.day === day)).pasos
                   const largo = evs.find(e => e.category === 'transport'
                     && ['shinkansen', 'flight'].includes((e as any).travel_mode))
                   return (
@@ -152,18 +151,20 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
                           </span>
                         ) : (tit.length > 0 ? tit.join(', ') : (largo ? '' : respaldo(evs)))}
                       </span>
+                      {/* Los pasos son de cada jornada: sumados por ciudad no
+                          dicen nada, porque lo que se quiere saber es si un
+                          día concreto va a ser una paliza. */}
+                      {pasos > 0 && (
+                        <span className="font-mono text-xs text-slate-400 flex-shrink-0 pt-0.5 inline-flex items-center gap-1"
+                          title="Aproximado, contando lo que se anda entre sitios y dentro de cada uno">
+                          <Footprints size={11} strokeWidth={1.8} /> {formateaPasos(pasos)}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
               </div>
 
-              <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400 flex-wrap">
-                {pasosTramo > 0 && (
-                  <span className="inline-flex items-center gap-1">
-                    <Footprints size={12} strokeWidth={1.8} /> ~{formateaPasos(pasosTramo)} pasos
-                  </span>
-                )}
-              </div>
             </div>
           </div>
         )
