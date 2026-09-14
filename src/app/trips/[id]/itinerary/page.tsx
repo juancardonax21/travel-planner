@@ -399,7 +399,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const [form, setForm] = useState<any>({ ...EMPTY })
   const [segments, setSegments] = useState<Segment[]>([EMPTY_SEG()])
   const [saving, setSaving] = useState(false)
-  const [viewMode, setViewMode] = useState<'week'|'day'>('week')
+  const [viewMode, setViewMode] = useState<'week'|'day'|'route'>('week')
   const [showScanner, setShowScanner] = useState(false)
   const [pendingReturn, setPendingReturn] = useState<any>(null)
 
@@ -647,7 +647,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     />
     <div className="min-h-screen bg-slate-50">
       <TripNav trip={trip} active="itinerary" />
-      <div className="max-w-4xl mx-auto px-4 pb-12">
+      <div className={`${viewMode === 'week' ? 'max-w-[1180px]' : 'max-w-4xl'} mx-auto px-4 pb-12`}>
 
         {/* View toggle + day picker */}
         <div className="flex items-center justify-between mb-2 pt-2">
