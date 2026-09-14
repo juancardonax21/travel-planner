@@ -1123,7 +1123,6 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
               trip={trip} events={events} days={days}
               onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }}
               onEventClick={ev => { setSelDay(ev.day); setDetalle(ev) }}
-              veCostes={veCostes}
             />
           </div>
         )}

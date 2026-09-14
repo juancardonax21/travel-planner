@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import type { Trip, Event } from '@/types'
-import { formatCurrency } from '@/lib/utils'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
 
 import {
@@ -245,10 +244,9 @@ type Props = {
   days: string[]
   onDayClick: (day: string) => void
   onEventClick?: (ev: Event) => void
-  veCostes?: boolean
 }
 
-export default function WeekView({ trip, events, days, onDayClick, onEventClick, veCostes = true }: Props) {
+export default function WeekView({ trip, events, days, onDayClick, onEventClick }: Props) {
   // En móvil cada día ocupa la pantalla y se pasa deslizando; en escritorio
   // caben varios. Se mide el contenedor, no la ventana, por si cambia el ancho.
   const caja = useRef<HTMLDivElement>(null)
@@ -456,14 +454,6 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                                      padding: movil ? '8px 10px' : '3px 7px' }}>
                             <Icon size={12} strokeWidth={2.4} className="flex-shrink-0" />
                             <span className="truncate">{minsToHHMM(start)} · {ev.title}</span>
-                            {/* Hay traslados de 12.400 ¥: el importe no se pierde
-                                al pasar de bloque a franja. Recorta el título,
-                                nunca el precio. */}
-                            {ev.cost > 0 && veCostes && (
-                              <span className="flex-shrink-0 font-semibold">
-                                {formatCurrency(ev.cost, (ev as any).currency || trip.currency)}
-                              </span>
-                            )}
                           </span>
                         </button>
                       )
@@ -485,8 +475,6 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                     const w = 100 / total
                     // Un bloque de menos de una hora no da para pie de bloque.
                     const pie = height >= 2 * SLOT_H
-                    const precio = ev.cost > 0 && !viene && veCostes
-                      ? formatCurrency(ev.cost, e.currency || trip.currency) : null
                     const distintivos = (contratado || enEfectivo || (avisos.length > 0 && height <= 4 * SLOT_H)) ? (
                       <>
                         {contratado && <CheckCircle2 size={10} strokeWidth={2.4} className="flex-shrink-0" />}
@@ -514,13 +502,16 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                           borderStyle: esTraslado ? 'dashed' : 'solid',
                           borderLeft: `${esTraslado ? 4 : 3}px solid ${fijo ? C.shu : pal.ink}`,
                         }}
-                        className="absolute z-10 px-2 py-1.5 text-left overflow-hidden flex flex-col hover:brightness-[.96] hover:shadow-md transition-all">
-                        {/* Arriba solo la hora. El importe y los distintivos bajan
-                            al pie, alineados a la izquierda como todo lo demás:
-                            en la fila de arriba se amontonaban hasta seis cosas y
-                            no se leía ninguna. Un bloque de menos de una hora no
-                            da de sí para un pie, y ahí el importe se queda arriba,
-                            pegado a la hora y también a la izquierda. */}
+                        className={`absolute z-10 px-2 text-left overflow-hidden flex flex-col hover:brightness-[.96] hover:shadow-md transition-all ${
+                          // 34 px para media hora: con el margen de siempre, la
+                          // hora y el título no entran. Los cortos van apretados.
+                          pie ? 'py-1.5' : 'py-0.5'
+                        }`}>
+                        {/* Arriba la hora, abajo los distintivos. El importe no
+                            sale en la rejilla: un desayuno de media hora mide 34
+                            píxeles y no caben tres líneas, así que unos bloques
+                            lo enseñaban y otros no. Vive en la ficha, que se abre
+                            al pinchar, y en la pestaña de presupuesto. */}
                         <span className="flex items-center gap-1 font-mono flex-shrink-0" style={{ fontSize: 11, letterSpacing: '.02em', color: pal.ink }}>
                           <Icon size={10} strokeWidth={2} className="flex-shrink-0 opacity-80" />
                           <span className="opacity-75">
@@ -529,9 +520,6 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                               : sigue ? `${minsToHHMM(start)} →`
                               : `${minsToHHMM(start)}–${minsToHHMM(end)}`}
                           </span>
-                          {!pie && precio && (
-                            <span className="flex-shrink-0 font-semibold opacity-90">{precio}</span>
-                          )}
                           {!pie && distintivos}
                         </span>
                         <span className="block leading-tight" style={{
@@ -546,10 +534,9 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                             {avisos[0]}
                           </span>
                         )}
-                        {pie && (distintivos || precio) && (
+                        {pie && distintivos && (
                           <span className="flex items-center gap-1 font-mono mt-auto pt-1 flex-shrink-0"
                             style={{ fontSize: 11, color: pal.ink }}>
-                            {precio && <span className="flex-shrink-0 font-semibold">{precio}</span>}
                             {distintivos}
                           </span>
                         )}
