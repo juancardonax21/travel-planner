@@ -14,7 +14,9 @@ export default function TripLayout({ children, params }:
   { children: React.ReactNode; params: { id: string } }) {
   const [trip, setTrip] = useState<Trip | null>(null)
   const ruta = usePathname()
-  const activa = (ruta || '').split('/')[4] || 'itinerary'
+  // /trips/<id>/<seccion> -> la sección es el índice 3, no el 4. Con el 4
+  // siempre salía indefinida y la pestaña marcada se quedaba en Itinerario.
+  const activa = (ruta || '').split('/')[3] || 'itinerary'
 
   useEffect(() => {
     supabase.from('trips').select('*').eq('id', params.id).maybeSingle()

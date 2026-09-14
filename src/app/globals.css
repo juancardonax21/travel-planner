@@ -54,11 +54,3 @@
   summary::-webkit-details-marker { display: none; }
 }
 
-@layer components {
-  /* La cabecera va sobre una foto que no controlamos: una sombra corta
-     mantiene el texto legible sea cual sea la imagen que se suba. */
-  .cabecera-viaje h1,
-  .cabecera-viaje p,
-  .cabecera-viaje button,
-  .cabecera-viaje a { text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
-}

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { canjearPendiente } from '@/lib/invitacion'
+import { usePuedeCrearViajes } from '@/lib/rolViaje'
 import type { Trip } from '@/types'
 import { formatDate, daysUntil } from '@/lib/utils'
 import Link from 'next/link'
@@ -92,6 +93,7 @@ export default function TripsPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const puedeCrear = usePuedeCrearViajes()
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -157,13 +159,16 @@ export default function TripsPage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 w-full">
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <Link href="/trips/new"
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-2xl text-center transition-colors shadow-md shadow-blue-200 flex items-center justify-center gap-2">
-            ＋ Nuevo viaje
-          </Link>
-        </div>
+        {/* A quien llegó por invitación no se le ofrece crear viajes: la base
+            tampoco se lo permitiría, y un botón que falla es peor que ninguno. */}
+        {puedeCrear && (
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <Link href="/trips/new"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-2xl text-center transition-colors shadow-md shadow-blue-200 flex items-center justify-center gap-2">
+              ＋ Nuevo viaje
+            </Link>
+          </div>
+        )}
 
         {trips.length === 0 ? (
           <div className="card p-16 text-center">

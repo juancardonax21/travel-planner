@@ -27,3 +27,20 @@ export function useRolViaje(tripId: string | undefined): { rol: Rol | null; veCo
 
   return { rol, veCostes: rol !== null && rol !== 'sin_costes' }
 }
+
+/* ¿Puede esta persona crear viajes propios? Sin ficha en app_users, sí: la
+   restricción solo alcanza a quien se marca al aceptar una invitación. */
+export function usePuedeCrearViajes(): boolean {
+  const [puede, setPuede] = useState(true)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return
+      supabase.from('app_users')
+        .select('puede_crear_viajes')
+        .eq('user_id', data.user.id)
+        .maybeSingle()
+        .then(({ data: f }) => { if (f) setPuede(f.puede_crear_viajes) })
+    })
+  }, [])
+  return puede
+}

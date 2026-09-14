@@ -84,5 +84,16 @@ async function canjear(request: Request) {
     return NextResponse.json(
       { error: 'No se pudo dar de alta el acceso: ' + error.message }, { status: 500 })
   }
+
+  // A quien llega por invitación y no tiene viajes propios se le comparte uno,
+  // no se le entrega la herramienta: no crea viajes. A quien ya tenía los
+  // suyos no se le toca nada.
+  const { count } = await admin
+    .from('trips').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+  if (!count) {
+    await admin.from('app_users')
+      .upsert({ user_id: user.id, puede_crear_viajes: false }, { onConflict: 'user_id' })
+  }
+
   return NextResponse.json({ trip_id: inv.trip_id })
 }
