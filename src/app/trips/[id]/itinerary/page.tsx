@@ -310,8 +310,10 @@ function PresenceBar({
             {days.map((day, i) => {
               const inRange = i >= startIdx && i <= endIdx
               const isStart = i === startIdx
-              const isEnd   = i === endIdx
+              const isEnd   = i === endIdx        // día de salida: no se duerme
               const isMid   = inRange && !isStart && !isEnd
+              const fondo   = isEnd && !isStart ? '#FEF3C7' : span.bg   // crema la salida
+              const tinta   = isEnd && !isStart ? '#92400E' : span.color
 
               if (!inRange) return (
                 <div key={day} className="flex-shrink-0 min-w-[62px] h-6" />
@@ -325,10 +327,10 @@ function PresenceBar({
                   <div className="absolute inset-y-0 left-0 right-0 flex items-center">
                     {/* Left connector (not first) */}
                     {!isStart && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1/2 h-2"
-                      style={{background: span.bg}} />}
+                      style={{background: fondo}} />}
                     {/* Right connector (not last) */}
                     {!isEnd && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-2"
-                      style={{background: span.bg}} />}
+                      style={{background: fondo}} />}
                   </div>
 
                   {/* Pill */}
@@ -338,8 +340,8 @@ function PresenceBar({
                     'px-0'
                   } ${(isStart || isEnd) ? 'w-full' : 'w-full'}`}
                     style={{
-                      background: span.bg,
-                      color: span.color,
+                      background: fondo,
+                      color: tinta,
                       borderRadius: isStart && isEnd ? '100px' : isStart ? '100px 0 0 100px' : isEnd ? '0 100px 100px 0' : '0'
                     }}>
                     {isStart && (
@@ -348,7 +350,10 @@ function PresenceBar({
                         <span className="truncate">{span.title.split(' ')[0]}</span>
                       </span>
                     )}
-                    {isMid && <div className="w-full h-2 rounded-none" style={{background: span.bg}} />}
+                    {isMid && <div className="w-full h-2 rounded-none" style={{background: fondo}} />}
+                    {isEnd && !isStart && (
+                      <span className="text-[9px] font-mono uppercase tracking-wide opacity-70">salida</span>
+                    )}
                   </div>
                 </button>
               )

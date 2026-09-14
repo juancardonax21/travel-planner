@@ -8,6 +8,7 @@ import { hayBiometria, estaActivado, activar, desactivar } from '@/lib/biometria
    soporta, en vez de ofrecer algo que va a fallar. */
 export default function BloqueoAjuste() {
   const [soportado, setSoportado] = useState<boolean | null>(null)
+  const [instalada, setInstalada] = useState(false)
   const [activo, setActivo] = useState(false)
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
@@ -15,9 +16,30 @@ export default function BloqueoAjuste() {
   useEffect(() => {
     hayBiometria().then(setSoportado)
     setActivo(estaActivado())
+    // Las apps guardadas en la pantalla de inicio corren en un WebView, y ahí
+    // iOS no expone las credenciales del sistema: WebAuthn solo funciona en
+    // Safari. Es limitación de plataforma, no hay rodeo.
+    setInstalada(window.matchMedia('(display-mode: standalone)').matches
+      || (navigator as any).standalone === true)
   }, [])
 
   if (soportado === null) return null
+
+  if (instalada) {
+    return (
+      <div className="card p-6 mb-4">
+        <h2 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+          <Fingerprint size={16} strokeWidth={1.8} className="text-slate-400" /> Bloqueo biométrico
+        </h2>
+        <p className="text-sm text-slate-500">
+          iOS no permite Face ID en las apps guardadas en la pantalla de inicio:
+          solo funciona abriendo la web en Safari. No es un fallo de la app, es
+          una limitación del sistema.
+        </p>
+      </div>
+    )
+  }
+
   if (!soportado) {
     return (
       <div className="card p-6 mb-4">
