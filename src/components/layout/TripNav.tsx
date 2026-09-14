@@ -19,13 +19,20 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
 
   return (
     <>
-      <div className="relative text-white shadow-lg overflow-hidden sticky top-0 z-30"
+      <div className="relative text-white shadow-lg overflow-hidden sticky top-0 z-30 cabecera-viaje"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         {(trip as any).cover_image ? (
           <>
+            {/* La portada la elige el usuario y puede ser muy clara. Un
+                desenfoque corto le quita el detalle que compite con el texto,
+                y el escalado evita que se vean los bordes al desenfocar. */}
             <div className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${(trip as any).cover_image})` }} />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/70" />
+              style={{
+                backgroundImage: `url(${(trip as any).cover_image})`,
+                filter: 'blur(3px)', transform: 'scale(1.06)',
+              }} />
+            <div className="absolute inset-0 bg-black/55" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/85" />
           </>
         ) : (
           <div className="absolute inset-0 bg-gradient-to-r from-blue-800 via-blue-600 to-violet-600" />
@@ -34,14 +41,14 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
           <div className="flex items-start justify-between py-3 gap-2">
             <div className="min-w-0 flex-1">
               <button onClick={() => router.push('/trips')}
-                className="text-white/60 hover:text-white text-sm mb-1 flex items-center gap-1 transition-colors">
+                className="text-white/85 hover:text-white text-sm mb-1 flex items-center gap-1 transition-colors">
                 ← Mis viajes
               </button>
-              <p className="text-white/60 text-xs uppercase tracking-widest font-mono truncate">
+              <p className="text-white/85 text-xs uppercase tracking-widest font-mono truncate">
                 {trip.destination}
               </p>
               <h1 className="text-lg sm:text-xl font-bold truncate">{trip.name}</h1>
-              <p className="text-white/70 text-xs mt-0.5">
+              <p className="text-white/90 text-xs mt-0.5">
                 {formatDate(trip.start_date, 'd MMM')} — {formatDate(trip.end_date, 'd MMM yyyy')}
               </p>
             </div>
@@ -50,7 +57,7 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
                 <div className="text-2xl sm:text-3xl font-bold font-mono leading-none">
                   {dL === null ? '?' : dL > 0 ? dL : dL === 0 ? '✈' : '✓'}
                 </div>
-                <div className="text-white/60 text-xs uppercase tracking-wide">
+                <div className="text-white/85 text-xs uppercase tracking-wide">
                   {dL === null ? '' : dL > 0 ? 'días' : dL === 0 ? 'hoy' : 'hecho'}
                 </div>
               </div>
@@ -68,7 +75,7 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-xl transition-all whitespace-nowrap ${
                   active === key
                     ? 'bg-white text-blue-700 shadow-sm'
-                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                    : 'text-white/90 hover:text-white bg-black/25 hover:bg-black/40'
                 }`}>
                 <Icon size={14} strokeWidth={active === key ? 2.2 : 1.8} />
                 {label}
