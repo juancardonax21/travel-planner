@@ -8,10 +8,16 @@ export default function OfflineReady() {
   const [sinRed, setSinRed] = useState(false)
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
+    // En desarrollo NO se registra: el caché serviría el HTML de una
+    // compilación anterior, que apunta a chunks que ya no existen, y la
+    // página saldría en blanco tras cada cambio.
+    const enDesarrollo = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+    if ('serviceWorker' in navigator && !enDesarrollo) {
       navigator.serviceWorker.register('/sw.js').catch(() => {
-        // En desarrollo o sin HTTPS puede no registrarse: no es motivo de error.
+        // Sin HTTPS no se puede registrar: no es motivo de error.
       })
+    } else if ('serviceWorker' in navigator && enDesarrollo) {
+      navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()))
     }
     const actualizar = () => setSinRed(!navigator.onLine)
     actualizar()

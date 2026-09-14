@@ -19,7 +19,8 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
 
   return (
     <>
-      <div className="relative text-white shadow-lg overflow-hidden sticky top-0 z-30">
+      <div className="relative text-white shadow-lg overflow-hidden sticky top-0 z-30"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         {(trip as any).cover_image ? (
           <>
             <div className="absolute inset-0 bg-cover bg-center"
@@ -78,11 +79,12 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
         </div>
       </div>
 
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 shadow-lg">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 shadow-lg"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 10px)' }}>
         <div className="flex">
           {NAV_ITEMS.map(({ key, label, Icon }) => (
             <Link key={key} href={`/trips/${trip.id}/${key}`}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${
+              className={`flex-1 flex flex-col items-center gap-0.5 pt-2.5 pb-1.5 transition-colors ${
                 active === key ? 'text-blue-600' : 'text-slate-400'
               }`}>
               <Icon size={20} strokeWidth={active === key ? 2.2 : 1.8} />
@@ -92,7 +94,7 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
         </div>
       </nav>
 
-      <div className="sm:hidden h-16" />
+      <div className="sm:hidden" style={{ height: 'calc(4.25rem + max(env(safe-area-inset-bottom), 10px))' }} />
     </>
   )
 }

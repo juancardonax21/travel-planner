@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import OfflineReady from '@/components/layout/OfflineReady'
+import BloqueoBiometrico from '@/components/layout/BloqueoBiometrico'
 
 export const metadata: Metadata = {
   title: 'Travel Planner',
@@ -23,6 +24,9 @@ export const viewport: Viewport = {
   themeColor: '#2563EB',
   width: 'device-width',
   initialScale: 1,
+  // Necesario para que env(safe-area-inset-*) devuelva algo distinto de cero
+  // y el menú pueda apartarse del gesto de inicio del iPhone.
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es">
       <body className="min-h-screen bg-slate-50">
         {children}
+        <BloqueoBiometrico />
         <OfflineReady />
       </body>
     </html>

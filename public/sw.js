@@ -65,7 +65,9 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(request.url)
 
-  // Navegación: si no hay red, la última versión de esa página.
+  // Una copia de HTML apunta a chunks con hash: si el despliegue cambia,
+  // esos nombres ya no existen. Por eso la navegación va siempre a la red
+  // primero y la copia solo se usa estando de verdad sin conexión.
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
       try {
