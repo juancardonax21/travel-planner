@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves, TrainFront, FileCheck2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves, TrainFront, FileCheck2, Banknote } from 'lucide-react'
 import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
@@ -59,6 +59,7 @@ const EMPTY: any = {
   travel_mode: 'driving',
   ticket_url: '', confirmation_url: '', insurance_url: '',
   fixed_time: false,
+  payment_method: 'tarjeta',
   num_stops: 0,
   flight_segments: [EMPTY_SEG()],
   // Accommodation fields
@@ -514,6 +515,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       location: e.location || '', travel_mode: e.travel_mode || 'driving', note: e.note || '', cost: e.cost || 0,
       ticket_url: e.ticket_url || '', confirmation_url: e.confirmation_url || '', insurance_url: e.insurance_url || '',
       fixed_time: e.fixed_time || false,
+      payment_method: e.payment_method || 'tarjeta',
       currency: e.currency || '',
       paid: e.paid || false,
       num_stops: numStopsFromSegs,
@@ -576,6 +578,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       ticket_url: form.ticket_url || null,
       confirmation_url: form.confirmation_url || null,
       fixed_time: form.fixed_time || false,
+      payment_method: form.payment_method || null,
       insurance_url: form.insurance_url || null,
       currency: form.currency || null,
       paid: form.paid || false,
@@ -940,6 +943,26 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
+            </div>
+          </div>
+          <div>
+            <label className="label">Cómo se paga</label>
+            <div className="flex gap-2">
+              {([
+                { v: 'tarjeta',  Icon: CreditCard,   label: 'Tarjeta' },
+                { v: 'efectivo', Icon: Banknote,     label: 'Efectivo' },
+                { v: 'prepago',  Icon: CheckCircle2, label: 'Prepago' },
+              ] as {v:string;Icon:any;label:string}[]).map(o => (
+                <button key={o.v} type="button"
+                  onClick={() => upd('payment_method', o.v)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm border transition-all ${
+                    form.payment_method === o.v
+                      ? 'bg-slate-800 text-white border-slate-800'
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                  }`}>
+                  <o.Icon size={13} strokeWidth={2} /> {o.label}
+                </button>
+              ))}
             </div>
           </div>
           <div className="flex items-center gap-3">

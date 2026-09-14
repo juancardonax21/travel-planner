@@ -3,7 +3,7 @@ import type { Trip, Event } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 import {
   Plane, BedDouble, Compass, UtensilsCrossed, Car, Tag, Bike, Bus, Footprints,
-  Waves, TrainFront, CheckCircle2, LucideIcon,
+  Waves, TrainFront, CheckCircle2, Banknote, LucideIcon,
 } from 'lucide-react'
 
 /* Rejilla de planning: columnas = días, filas = tramos de 30 min.
@@ -81,7 +81,7 @@ function noteLines(note?: string | null): string[] {
 const isWarn = (line: string) => line.startsWith('⚠')
 // El desglose del coste ya se ve en la etiqueta del importe: en la rejilla
 // sobra como texto. Sigue estando en la ficha al abrir el evento.
-const esCoste = (line: string) => line.startsWith('Coste ')
+const esMeta = (line: string) => line.startsWith('Coste ') || line.startsWith('Pago: ')
 const MAX_NOTAS = 2        // líneas informativas; los avisos no se recortan
 
 /** Ciudades del día, sacadas de las ubicaciones ya geocodificadas. */
@@ -223,11 +223,12 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                     const e = ev as any
                     const todas = noteLines(e.note)
                     const avisos = todas.filter(isWarn)
-                    const sueltas = todas.filter(l => !isWarn(l) && !esCoste(l))
+                    const sueltas = todas.filter(l => !isWarn(l) && !esMeta(l))
                     const recortadas = sueltas.length > MAX_NOTAS
                     const lines = [...avisos, ...sueltas.slice(0, MAX_NOTAS)]
                     const fijo = Boolean(e.fixed_time)
                     const contratado = Boolean(e.ticket_url || e.confirmation_url || e.paid)
+                    const enEfectivo = e.payment_method === 'efectivo'
                     const pal = CAT_COLOR[ev.category] || CAT_COLOR.other
                     const esTraslado = ev.category === 'transport'
                     const Icon = eventIcon(ev)
@@ -260,6 +261,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                             {overnight ? ' →' : ''}
                           </span>
                           {contratado && <CheckCircle2 size={10} strokeWidth={2.4} className="flex-shrink-0" />}
+                          {enEfectivo && <Banknote size={11} strokeWidth={2.2} className="flex-shrink-0" style={{ color: C.shu }} />}
                           {ev.cost > 0 && (
                             <span className="ml-auto flex-shrink-0 font-semibold opacity-90">
                               {formatCurrency(ev.cost, e.currency || trip.currency)}
@@ -309,6 +311,9 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
         })}
         <span className="inline-flex items-center gap-1.5">
           <CheckCircle2 size={12} strokeWidth={2.4} style={{ color: C.ink2 }} /> Contratado o pagado
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <Banknote size={12} strokeWidth={2.2} style={{ color: C.shu }} /> Solo efectivo
         </span>
         <span className="inline-flex items-center gap-1.5" style={{ color: C.shu }}>
           <i style={{ width: 20, height: 12, borderRadius: 3, background: '#FFF', border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.shu}` }} />
