@@ -91,7 +91,12 @@ function eventRange(ev: Event): { start: number; end: number } {
   }
   const start = timeToMins(ev.time)
   const end = e.end_time ? timeToMins(e.end_time) : start + 60
-  return { start, end: end <= start ? start + 60 : end }
+  if (end > start) return { start, end }
+  // Empieza de noche y acaba de madrugada: cruza la medianoche y sigue en el
+  // día siguiente. Fuera de esa franja un fin anterior al inicio es un dato
+  // mal metido, y ahí vale más dibujar una hora que un bloque de 24.
+  const cruzaMedianoche = start >= 20 * 60 && end <= 6 * 60
+  return { start, end: cruzaMedianoche ? end + 24 * 60 : start + 60 }
 }
 
 /** Las notas se guardan unidas por " · "; cada trozo es una línea. */
