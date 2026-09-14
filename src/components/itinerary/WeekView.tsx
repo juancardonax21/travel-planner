@@ -52,7 +52,8 @@ function noteLines(note?: string | null): string[] {
   return note.split(' · ').map(s => s.trim()).filter(Boolean)
 }
 const isWarn = (line: string) => line.startsWith('⚠')
-const REDUNDANTES = ['⚠ Fecha u hora que no admite cambio', 'Ya contratado o pendiente de reservar']
+// marca que dejó la importación del plan, sustituida por la columna fixed_time
+const MARCA_LEGADA = '⚠ Fecha u hora que no admite cambio'
 
 /** Ciudades del día, sacadas de las ubicaciones ya geocodificadas. */
 function dayPlaces(evs: Event[]): string {
@@ -209,8 +210,8 @@ export default function WeekView({ trip, events, days, onDayClick }: Props) {
                     if (start >= endH * 60) return null
 
                     const allLines = noteLines((ev as any).note)
-                    const fijo = allLines.some(isWarn)
-                    const lines = allLines.filter(l => !REDUNDANTES.includes(l))
+                    const fijo = Boolean((ev as any).fixed_time) || allLines.includes(MARCA_LEGADA)
+                    const lines = allLines.filter(l => l !== MARCA_LEGADA)
                     const { style, titleColor, weight } = blockStyle(ev, fijo)
                     const w = 100 / total
                     const overnight = end > endH * 60

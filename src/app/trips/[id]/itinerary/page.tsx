@@ -58,6 +58,7 @@ const EMPTY: any = {
   location: '', lat: null, lng: null, note: '', cost: 0, currency: '', paid: false,
   travel_mode: 'driving',
   ticket_url: '', confirmation_url: '', insurance_url: '',
+  fixed_time: false,
   num_stops: 0,
   flight_segments: [EMPTY_SEG()],
   // Accommodation fields
@@ -512,6 +513,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       event_date: e.day || '',
       location: e.location || '', travel_mode: e.travel_mode || 'driving', note: e.note || '', cost: e.cost || 0,
       ticket_url: e.ticket_url || '', confirmation_url: e.confirmation_url || '', insurance_url: e.insurance_url || '',
+      fixed_time: e.fixed_time || false,
       currency: e.currency || '',
       paid: e.paid || false,
       num_stops: numStopsFromSegs,
@@ -566,6 +568,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       end_time: isFlight ? (segments[segments.length - 1]?.arr_time || null) : (form.end_time || null),
       ticket_url: form.ticket_url || null,
       confirmation_url: form.confirmation_url || null,
+      fixed_time: form.fixed_time || false,
       insurance_url: form.insurance_url || null,
       currency: form.currency || null,
       paid: form.paid || false,
@@ -851,6 +854,19 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       min={trip.start_date} max={trip.end_date} />
                   </div>
                   )}
+
+                  {/* NO ADMITE CAMBIO */}
+                  <div>
+                    <button type="button" onClick={() => upd('fixed_time', !form.fixed_time)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                        form.fixed_time
+                          ? 'bg-red-50 text-red-700 border-red-300'
+                          : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                      }`}>
+                      <AlertTriangle size={13} strokeWidth={2} />
+                      {form.fixed_time ? 'Fecha u hora que no admite cambio' : 'Se puede mover de fecha u hora'}
+                    </button>
+                  </div>
 
                   {/* CATEGORÍA */}
                   <div>
@@ -1280,6 +1296,12 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                           {/* Edit/delete — hover */}
                           <div className="flex flex-col items-end gap-2 flex-shrink-0">
                             <CategoryBadge category={ev.category} />
+                            {e.fixed_time && (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200"
+                                title="Fecha u hora que no admite cambio">
+                                <AlertTriangle size={10} strokeWidth={2} /> Fijo
+                              </span>
+                            )}
                             {ev.category === 'transport' && ev.travel_mode === 'flight' && tripMembers.length > 0 && (
                               <DocStatusBadge
                                 travelers={tripMembers}

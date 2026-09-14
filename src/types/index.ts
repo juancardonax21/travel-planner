@@ -20,7 +20,7 @@ export type Event = {
   airline?: string; flight_number?: string; from_airport?: string
   to_airport?: string; dep_time?: string; arr_time?: string
   arr_day?: string; terminal?: string; created_at: string
-  travel_mode?: TravelMode; end_time?: string
+  travel_mode?: TravelMode; end_time?: string; fixed_time?: boolean
   ticket_url?: string; confirmation_url?: string; insurance_url?: string
 }
 export type BudgetCategory = 'flights'|'hotels'|'transport'|'activities'|'meals'|'other'
