@@ -28,13 +28,17 @@ export default function LoginPage() {
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="label">Email</label>
-            <input className="input" type="email" value={email}
+            <label className="label" htmlFor="email">Email</label>
+            <input className="input" id="email" name="email" type="email"
+              autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+              value={email}
               onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" required />
           </div>
           <div>
-            <label className="label">Contraseña</label>
-            <input className="input" type="password" value={password}
+            <label className="label" htmlFor="password">Contraseña</label>
+            <input className="input" id="password" name="password" type="password"
+              autoComplete="current-password"
+              value={password}
               onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
           </div>
           {error && <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>}
