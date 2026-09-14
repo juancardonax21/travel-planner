@@ -40,8 +40,9 @@ function TripCard({ trip, index }: { trip: Trip; index: number }) {
   const gradient = GRADIENTS[index % GRADIENTS.length]
   const emoji = destinationEmoji(trip.destination)
 
+  // Directo al plan: la portada del viaje ya no existe.
   return (
-    <Link href={`/trips/${trip.id}`} className="block group">
+    <Link href={`/trips/${trip.id}/itinerary`} className="block group">
       <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl transition-all duration-300 sm:group-hover:scale-[1.02] group-hover:shadow-2xl shadow-lg ${isPast ? 'opacity-70' : ''}`}>
         {/* Background: photo or gradient */}
         <div className="relative">
