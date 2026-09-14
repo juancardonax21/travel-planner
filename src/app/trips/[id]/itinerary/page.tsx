@@ -12,6 +12,7 @@ import { planDe, tituloSinPlan } from '@/lib/planes'
 import VideoModal from '@/components/itinerary/VideoModal'
 import { fotoDeSitio } from '@/lib/foto'
 import Ilustracion, { seIlustra } from '@/components/itinerary/Ilustracion'
+import LineaTren from '@/components/itinerary/LineaTren'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import PlanGeneral from '@/components/itinerary/PlanGeneral'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
@@ -1262,6 +1263,14 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                         <p key={k} className={`text-sm leading-snug ${
                           l.startsWith('⚠') ? 'text-red-600 font-medium' : 'text-slate-600'}`}>{l}</p>
                       ))}
+                    </div>
+                  )}
+
+                  {/* La línea que hay que coger, antes que nada: en el andén
+                      se busca el color y la letra, no el nombre. */}
+                  {e.practico?.linea && (
+                    <div className="rounded-2xl border border-slate-200 bg-white p-3 mb-3">
+                      <LineaTren clave={e.practico.linea} direccion={e.practico.direccion} />
                     </div>
                   )}
 
