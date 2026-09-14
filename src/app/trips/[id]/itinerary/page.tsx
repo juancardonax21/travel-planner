@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves, TrainFront, FileCheck2, Banknote } from 'lucide-react'
+import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves, TrainFront, FileCheck2, Banknote, ChevronRight } from 'lucide-react'
 import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
@@ -409,6 +409,22 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
   useEffect(() => { loadData() }, [id])
 
+  useEffect(() => {
+    if (window.innerWidth < 768) setViewMode('day')
+  }, [])
+
+  // Escape cierra lo que esté abierto, de dentro afuera.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (showForm) setShowForm(false)
+      else if (detalle) setDetalle(null)
+      else if (showScanner) setShowScanner(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showForm, detalle, showScanner])
+
   async function loadData() {
     const [{ data: t }, { data: ev }, { data: dn }, { data: tm }] = await Promise.all([
       supabase.from('trips').select('*').eq('id', id).single(),
@@ -416,7 +432,13 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       supabase.from('day_notes').select('*').eq('trip_id', id),
       supabase.from('trip_members').select('*, family_member:family_members(*)').eq('trip_id', id),
     ])
-    if (t) { setTrip(t); setSelDay(t.start_date); fetchWeather(t.destination).then(setWeather) }
+    if (t) {
+      setTrip(t)
+      // Si el viaje está en curso, lo útil es abrir por hoy.
+      const hoy = new Date().toLocaleDateString('sv-SE')   // formato AAAA-MM-DD
+      setSelDay(hoy >= t.start_date && hoy <= t.end_date ? hoy : t.start_date)
+      fetchWeather(t.destination).then(setWeather)
+    }
     setTripMembers((tm || []).map((item: any) => item.family_member).filter(Boolean))
     setEvents(ev || [])
     const notes: Record<string, string> = {}
@@ -802,8 +824,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
             </div>
 
             {/* SECCIÓN: RESERVA */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
-              <div className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Datos de reserva</div>
+            <details className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3" open>
+              <summary className="text-xs font-semibold text-slate-600 uppercase tracking-wide cursor-pointer list-none select-none flex items-center justify-between py-1">
+                <span className="flex items-center gap-1">Datos de reserva</span>
+                <ChevronRight size={13} strokeWidth={2} className="seccion-flecha transition-transform" />
+              </summary>
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="label">Nº Reserva</label>
@@ -818,11 +843,14 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                   <input className="input" type="tel" value={form.accom_phone} onChange={e => upd('accom_phone', e.target.value)} placeholder="+34 901 234 567" />
                 </div>
               </div>
-            </div>
+            </details>
 
             {/* SECCIÓN: CHECK-IN / CHECK-OUT */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-3">
-              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Check-in / Check-out</div>
+            <details className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-3" open>
+              <summary className="text-xs font-semibold text-blue-600 uppercase tracking-wide cursor-pointer list-none select-none flex items-center justify-between py-1">
+                <span className="flex items-center gap-1">Check-in / Check-out</span>
+                <ChevronRight size={13} strokeWidth={2} className="seccion-flecha transition-transform" />
+              </summary>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label flex items-center gap-1"><CalendarDays size={11} strokeWidth={1.8} /> Entrada (fecha)</label>
@@ -841,11 +869,14 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                   <input className="input" type="time" value={form.accom_checkout_time} onChange={e => upd('accom_checkout_time', e.target.value)} placeholder="10:00" />
                 </div>
               </div>
-            </div>
+            </details>
 
             {/* SECCIÓN: UBICACIÓN Y CONTACTO */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-3">
-              <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Ubicación</div>
+            <details className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-3">
+              <summary className="text-xs font-semibold text-emerald-600 uppercase tracking-wide cursor-pointer list-none select-none flex items-center justify-between py-1">
+                <span className="flex items-center gap-1">Ubicación</span>
+                <ChevronRight size={13} strokeWidth={2} className="seccion-flecha transition-transform" />
+              </summary>
               <div>
                 <label className="label flex items-center gap-1"><MapPin size={11} strokeWidth={1.8} /> Dirección</label>
                 <input className="input" value={form.accom_address} onChange={e => upd('accom_address', e.target.value)} placeholder="Paseos de la Mota, s/n, 49600 Benavente" />
@@ -854,7 +885,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                 <label className="label flex items-center gap-1"><Globe size={11} strokeWidth={1.8} /> Web / Link reserva</label>
                 <input className="input" type="url" value={form.accom_web} onChange={e => upd('accom_web', e.target.value)} placeholder="https://booking.com/..." />
               </div>
-            </div>
+            </details>
 
             {/* SECCIÓN: HUÉSPEDES Y HABITACIÓN */}
             <div className="grid grid-cols-3 gap-3">
@@ -873,8 +904,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
             </div>
 
             {/* SECCIÓN: SERVICIOS */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
-              <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Servicios incluidos</div>
+            <details className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
+              <summary className="text-xs font-semibold text-amber-600 uppercase tracking-wide cursor-pointer list-none select-none flex items-center justify-between py-1">
+                <span className="flex items-center gap-1">Servicios incluidos</span>
+                <ChevronRight size={13} strokeWidth={2} className="seccion-flecha transition-transform" />
+              </summary>
               <div className="grid grid-cols-3 gap-2">
                 {([
                   {k:'accom_breakfast', Icon: Utensils, label:'Desayuno'},
@@ -901,11 +935,14 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                   <input className="input" value={form.accom_parking_info} onChange={e => upd('accom_parking_info', e.target.value)} placeholder="Incluido · acceso por Collins Ave." />
                 </div>
               )}
-            </div>
+            </details>
 
             {/* SECCIÓN: CANCELACIÓN */}
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-3">
-              <div className="text-xs font-semibold text-red-700 uppercase tracking-wide flex items-center gap-1"><AlertTriangle size={11} strokeWidth={2} /> Cancelación</div>
+            <details className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-3">
+              <summary className="text-xs font-semibold text-red-700 uppercase tracking-wide flex items-center gap-1 cursor-pointer list-none select-none flex items-center justify-between py-1">
+                <span className="flex items-center gap-1"><AlertTriangle size={11} strokeWidth={2} /> Cancelación</span>
+                <ChevronRight size={13} strokeWidth={2} className="seccion-flecha transition-transform" />
+              </summary>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Gratis hasta</label>
@@ -916,7 +953,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                   <input className="input" value={form.accom_cancel_fee} onChange={e => upd('accom_cancel_fee', e.target.value)} placeholder="$1.600 / 100%" />
                 </div>
               </div>
-            </div>
+            </details>
 
             {/* SECCIÓN: NOTAS DE ACCESO */}
             <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
@@ -1044,6 +1081,16 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
             </button>
           </div>
           <div className="flex gap-2">
+            {(() => {
+              const hoy = new Date().toLocaleDateString('sv-SE')
+              if (hoy < trip.start_date || hoy > trip.end_date) return null
+              return (
+                <button onClick={() => { setSelDay(hoy); setViewMode('day'); setShowForm(false) }}
+                  className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors font-medium">
+                  <CalendarDays size={14} strokeWidth={2} /> Hoy
+                </button>
+              )
+            })()}
             <button onClick={() => setShowScanner(true)}
               className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border border-violet-200 text-violet-600 hover:bg-violet-50 transition-colors font-medium">
               <Sparkles size={14} strokeWidth={2} /> Escanear
@@ -1057,6 +1104,9 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
         {/* Week view */}
         {viewMode === 'week' && (
           <div className="mb-4">
+            <p className="sm:hidden text-xs text-slate-400 mb-2 flex items-center gap-1.5">
+              <ChevronRight size={12} strokeWidth={2} /> Desliza para pasar de día
+            </p>
             <WeekView
               trip={trip} events={events} days={days}
               onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }}

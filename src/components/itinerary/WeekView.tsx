@@ -1,10 +1,11 @@
 'use client'
+import { useEffect, useRef, useState } from 'react'
 import type { Trip, Event } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 
 import {
   Plane, BedDouble, Compass, UtensilsCrossed, Car, Tag, Bike, Bus, Footprints,
-  TrainFront, TrainFrontTunnel, Train, Ship, CheckCircle2, Banknote, AlertTriangle, LucideIcon,
+  TrainFront, TrainFrontTunnel, Train, Ship, CheckCircle2, Banknote, AlertTriangle, Info, LucideIcon,
 } from 'lucide-react'
 
 /* Rejilla de planning: columnas = días, filas = tramos de 30 min.
@@ -13,8 +14,11 @@ import {
 
 const SLOT_MIN = 30
 const SLOT_H = 34          // alto de media hora
-const RAIL_W = 56          // columna de horas
-const DAY_W = 215          // ancho mínimo de cada día
+const RAIL_W = 48          // columna de horas
+const DAY_W = 215          // ancho de cada día en escritorio
+const MOVIL = 768          // por debajo, un día ocupa la pantalla entera
+const HITO_H = 26          // alto del hito; en móvil sube para poder tocarlo
+const HITO_H_MOVIL = 40
 const HEAD_H = 66          // alto de la cabecera de días, para fijar la franja de hotel
 
 // Color por categoría, tomado de la paleta de la app.
@@ -194,6 +198,23 @@ type Props = {
 }
 
 export default function WeekView({ trip, events, days, onDayClick, onEventClick }: Props) {
+  // En móvil cada día ocupa la pantalla y se pasa deslizando; en escritorio
+  // caben varios. Se mide el contenedor, no la ventana, por si cambia el ancho.
+  const caja = useRef<HTMLDivElement>(null)
+  const [anchoDia, setAnchoDia] = useState(DAY_W)
+  const [movil, setMovil] = useState(false)
+  useEffect(() => {
+    const medir = () => {
+      const esMovil = window.innerWidth < MOVIL
+      setMovil(esMovil)
+      const w = caja.current?.clientWidth ?? 0
+      setAnchoDia(esMovil && w ? Math.max(240, w - RAIL_W) : DAY_W)
+    }
+    medir()
+    window.addEventListener('resize', medir)
+    return () => window.removeEventListener('resize', medir)
+  }, [])
+  const hitoH = movil ? HITO_H_MOVIL : HITO_H
   // rango horario: 7:00–23:00 por defecto, ampliado si hay eventos fuera
   let startH = 7, endH = 23
   events.forEach(ev => {
@@ -211,9 +232,10 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
 
   return (
     <div>
-      <div className="overflow-auto rounded-xl border shadow-sm"
-        style={{ borderColor: C.ruleStrong, background: C.surface, maxHeight: 'calc(100vh - 200px)' }}>
-        <div style={{ minWidth: RAIL_W + days.length * DAY_W }}>
+      <div className="overflow-auto rounded-xl border shadow-sm rejilla-alto rejilla-snap"
+        ref={caja}
+        style={{ borderColor: C.ruleStrong, background: C.surface }}>
+        <div style={{ minWidth: RAIL_W + days.length * anchoDia }}>
 
           {/* ── cabecera de días ── */}
           <div className="flex sticky top-0 z-30" style={{ borderBottom: `2px solid ${C.ink}`, background: C.surface }}>
@@ -225,15 +247,15 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
               const place = dayPlaces(evs)
               return (
                 <button key={day} onClick={() => onDayClick(day)}
-                  style={{ width: DAY_W, borderLeft: `1px solid ${C.rule}` }}
+                  style={{ width: anchoDia, borderLeft: `1px solid ${C.rule}`, scrollSnapAlign: 'start' }}
                   className="flex-shrink-0 py-2 px-2 text-center hover:bg-blue-50 transition-colors">
-                  <span className="block font-mono uppercase" style={{ fontSize: 10.5, letterSpacing: '.14em', color: C.muted }}>
+                  <span className="block font-mono uppercase" style={{ fontSize: 11, letterSpacing: '.12em', color: C.muted }}>
                     {dt.toLocaleDateString('es-ES', { weekday: 'long' })}
                   </span>
                   <span className="block font-bold" style={{ fontSize: 14.5, color: evs.length ? C.ink : C.faint }}>
                     {dt.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                   </span>
-                  <span className="block truncate" style={{ fontSize: 11, color: C.accent, minHeight: 16 }}>
+                  <span className="block truncate" style={{ fontSize: 11.5, color: C.accent, minHeight: 16 }}>
                     {place}
                   </span>
                 </button>
@@ -257,14 +279,14 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                 const entra = h && (h as any).accom_checkin_date === day
                 const pal = CAT_COLOR.hotel
                 return (
-                  <div key={day} style={{ width: DAY_W, borderLeft: `1px solid ${C.rule}` }}
+                  <div key={day} style={{ width: anchoDia, borderLeft: `1px solid ${C.rule}`, scrollSnapAlign: 'start' }}
                     className="flex-shrink-0 px-1 py-1">
                     {h && (
                       <button onClick={() => onEventClick ? onEventClick(h) : onDayClick(day)}
-                        style={{ background: pal.bg, color: pal.ink, borderColor: pal.line }}
-                        className="w-full truncate text-left px-2 py-0.5 rounded border hover:brightness-95 transition-all"
+                        style={{ background: pal.bg, color: pal.ink, borderColor: pal.line, paddingBlock: movil ? 8 : 3 }}
+                        className="w-full truncate text-left px-2 rounded border hover:brightness-95 transition-all"
                         title={h.title}>
-                        <span style={{ fontSize: 10.8, fontWeight: entra ? 700 : 400, opacity: entra ? 1 : .7 }}>
+                        <span style={{ fontSize: 11, fontWeight: entra ? 700 : 400, opacity: entra ? 1 : .75 }}>
                           {h.title}
                         </span>
                       </button>
@@ -283,7 +305,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
               {ticks.map(m => (
                 <div key={m} style={{ top: yOf(m) - 7, color: m % 60 === 0 ? C.ink2 : C.faint }}
                   className="absolute right-2 font-mono">
-                  <span style={{ fontSize: 10.5 }}>
+                  <span style={{ fontSize: 11 }}>
                     {String(Math.floor(m / 60)).padStart(2, '0')}:{String(m % 60).padStart(2, '0')}
                   </span>
                 </div>
@@ -297,7 +319,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
               const hitos = hitosDelDia(events, day)
 
               return (
-                <div key={day} style={{ width: DAY_W, borderLeft: `1px solid ${C.rule}` }}
+                <div key={day} style={{ width: anchoDia, borderLeft: `1px solid ${C.rule}`, scrollSnapAlign: 'start' }}
                   className="flex-shrink-0 relative">
                   {ticks.map(m => (
                     <div key={m} style={{
@@ -313,14 +335,15 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                     let ocupadoHasta = -Infinity
                     return hitos.map((h, k) => {
                       const y = Math.max(yOf(h.t), ocupadoHasta)
-                      ocupadoHasta = y + 15
+                      ocupadoHasta = y + hitoH
                       return (
                         <button key={k} onClick={e => { e.stopPropagation(); onEventClick ? onEventClick(h.ev) : onDayClick(day) }}
-                          style={{ top: y - 1, borderTop: `2px dashed ${h.color}` }}
-                          className="absolute left-0 right-0 z-20 flex items-center">
-                          <span className="flex items-center gap-1 px-1.5 rounded-br font-mono truncate shadow-sm"
-                            style={{ fontSize: 9, background: h.color, color: '#fff', maxWidth: '100%' }}>
-                            <h.Icon size={9} strokeWidth={2.4} className="flex-shrink-0" />
+                          style={{ top: y - 1, height: hitoH, borderTop: `2px dashed ${h.color}` }}
+                          className="absolute left-0 right-0 z-20 flex items-start">
+                          <span className="flex items-center gap-1.5 rounded-br font-mono truncate shadow-sm"
+                            style={{ fontSize: 11, background: h.color, color: '#fff', maxWidth: '100%',
+                                     padding: movil ? '8px 10px' : '3px 7px' }}>
+                            <h.Icon size={12} strokeWidth={2.4} className="flex-shrink-0" />
                             <span className="truncate">{h.texto}</span>
                           </span>
                         </button>
@@ -360,7 +383,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                           borderLeft: `${esTraslado ? 4 : 3}px solid ${fijo ? C.shu : pal.ink}`,
                         }}
                         className="absolute z-10 px-2 py-1.5 text-left overflow-hidden hover:brightness-[.96] hover:shadow-md transition-all">
-                        <span className="flex items-center gap-1 font-mono" style={{ fontSize: 9.5, letterSpacing: '.04em', color: pal.ink }}>
+                        <span className="flex items-center gap-1 font-mono" style={{ fontSize: 11, letterSpacing: '.02em', color: pal.ink }}>
                           <Icon size={10} strokeWidth={2} className="flex-shrink-0 opacity-80" />
                           <span className="opacity-75">
                             {viene && sigue ? 'todo el día'
@@ -380,14 +403,14 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                           )}
                         </span>
                         <span className="block leading-tight" style={{
-                          fontSize: 12.5, color: pal.ink,
+                          fontSize: 13, color: pal.ink,
                           fontWeight: ev.category === 'other' ? 500 : 700,
                         }}>
                           {ev.title}
                         </span>
                         {avisos.length > 0 && height > 4 * SLOT_H && (
                           <span className="block leading-snug mt-1"
-                            style={{ fontSize: 10.5, color: C.shu, fontWeight: 500 }}>
+                            style={{ fontSize: 11, color: C.shu, fontWeight: 500 }}>
                             {avisos[0]}
                           </span>
                         )}
@@ -401,8 +424,14 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
         </div>
       </div>
 
-      {/* ── leyenda ── */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 px-1" style={{ fontSize: 12, color: C.muted }}>
+      {/* ── leyenda: plegada en móvil, donde el alto es oro ── */}
+      <details className="mt-3 px-1" open={!movil}>
+        <summary className="cursor-pointer list-none select-none inline-flex items-center gap-1.5 py-2"
+          style={{ fontSize: 12, color: C.muted }}>
+          <Info size={13} strokeWidth={2} /> Qué significa cada color
+        </summary>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-1" style={{ fontSize: 12, color: C.muted }}>
+
         {(['transport', 'hotel', 'activity', 'meal', 'other'] as const).map(k => {
           const p = CAT_COLOR[k]
           return (
@@ -428,6 +457,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
           No admite cambio
         </span>
       </div>
+      </details>
     </div>
   )
 }
