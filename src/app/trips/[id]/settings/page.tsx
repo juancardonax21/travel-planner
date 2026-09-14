@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import type { Trip } from '@/types'
 import { fetchExchangeRate } from '@/lib/weather'
 import TripNav from '@/components/layout/TripNav'
+import CompartirViaje from '@/components/layout/CompartirViaje'
 
 const CURRENCIES = [
   {c:'USD',s:'$'},{c:'EUR',s:'€'},{c:'GBP',s:'£'},{c:'JPY',s:'¥'},
@@ -97,6 +98,8 @@ export default function TripSettingsPage({ params }: { params: { id: string } })
     <div className="min-h-screen bg-slate-50">
       <TripNav trip={{ ...trip, ...form } as Trip} active="settings" />
       <div className="max-w-2xl mx-auto px-4 pb-12">
+
+        <CompartirViaje tripId={params.id} />
 
         {/* Cover photo */}
         <div className="card p-6 mb-4">
