@@ -652,7 +652,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   // El formulario vive en dos sitios: incrustado en la vista de día y dentro
   // de una ventana sobre la rejilla, para poder editar sin salir de ella.
   const eventForm = (
-    <div className="card p-5 mb-4 border-blue-200 bg-blue-50/30">
+    <div className="card p-5 mb-4 border-blue-200 shadow-xl">
       <div className="flex items-center justify-between mb-5">
         <h3 className="font-semibold text-slate-800">{(() => {
           const labels: Record<string,string> = {transport:'Transporte',hotel:'Alojamiento',activity:'Actividad',meal:'Comida',other:'Otro'}
@@ -1040,7 +1040,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
         {/* Ficha del evento sobre la rejilla, sin salir de ella */}
         {viewMode === 'week' && showForm && (
-          <div className="fixed inset-0 z-50 bg-slate-900/40 overflow-y-auto"
+          <div className="fixed inset-0 z-50 bg-slate-900/50 overflow-y-auto"
             onClick={() => setShowForm(false)}>
             <div className="max-w-2xl mx-auto px-4 py-8" onClick={e => e.stopPropagation()}>
               {eventForm}
