@@ -9,6 +9,7 @@ import { fetchWeather, weatherEmoji, type WeatherDay } from '@/lib/weather'
 import dynamic from 'next/dynamic'
 import WeekView, { MODE_LABEL } from '@/components/itinerary/WeekView'
 import { planDe, tituloSinPlan } from '@/lib/planes'
+import VideoModal from '@/components/itinerary/VideoModal'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import PlanGeneral from '@/components/itinerary/PlanGeneral'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
@@ -410,6 +411,8 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const [editEvent, setEditEvent] = useState<Event | null>(null)
   // Pulsar un bloque abre la ficha en lectura; editar es un paso aparte.
   const [detalle, setDetalle] = useState<Event | null>(null)
+  // El vídeo se ve dentro de la aplicación, encima del plan.
+  const [video, setVideo] = useState<{ id: string; titulo: string } | null>(null)
   const diaSeleccionado = useRef<HTMLButtonElement | null>(null)
   const { veCostes } = useRolViaje(id)
   const [form, setForm] = useState<any>({ ...EMPTY })
@@ -435,12 +438,13 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       if (showForm) setShowForm(false)
+      else if (video) { /* lo cierra el propio reproductor */ }
       else if (detalle) setDetalle(null)
       else if (showScanner) setShowScanner(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [showForm, detalle, showScanner])
+  }, [showForm, detalle, showScanner, video])
 
   async function loadData() {
     const [{ data: t }, { data: ev }, { data: dn }, { data: tm }] = await Promise.all([
@@ -1142,6 +1146,9 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
           </div>
         )}
 
+        {/* El reproductor va por encima de todo, también de la ficha */}
+        {video && <VideoModal videoId={video.id} titulo={video.titulo} onClose={() => setVideo(null)} />}
+
         {/* Detalle en lectura: todo lo del evento, y de ahí a editar */}
         {detalle && !showForm && (() => {
           const e = detalle as any
@@ -1170,16 +1177,16 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       {/* Ver el sitio antes de ir: la miniatura la sirve YouTube
                           a partir del id, y al pinchar se abre el vídeo. */}
                       {e.video_id && (
-                        <a href={`https://www.youtube.com/watch?v=${e.video_id}`}
-                          target="_blank" rel="noreferrer"
-                          className="group relative block mt-3 rounded-xl overflow-hidden bg-slate-900 shadow-sm hover:shadow-lg transition-shadow">
+                        <button type="button"
+                          onClick={() => setVideo({ id: e.video_id, titulo: tituloSinPlan(detalle) })}
+                          className="group relative block w-full mt-3 rounded-xl overflow-hidden bg-slate-900 shadow-sm hover:shadow-lg transition-shadow text-left">
                           <img src={`https://i.ytimg.com/vi/${e.video_id}/mqdefault.jpg`} alt=""
                             className="w-full aspect-video object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                           <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                           <PlayCircle size={40} strokeWidth={1.5}
                             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/90 group-hover:scale-110 transition-transform" />
                           <span className="absolute bottom-2 left-3 text-xs font-medium text-white">Ver cómo es</span>
-                        </a>
+                        </button>
                       )}
                     </div>
                     <button onClick={() => setDetalle(null)}
@@ -1472,7 +1479,17 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-slate-900">{tituloSinPlan(ev)}</h3>
+                            {/* Abre la ficha, igual que en la cuadrícula. Solo el
+                                título: la tarjeta lleva dentro enlaces y botones
+                                propios y no puede ser toda ella un botón. */}
+                            <button type="button" onClick={() => setDetalle(ev)}
+                              className="group/t flex items-start gap-1.5 text-left">
+                              <h3 className="font-semibold text-slate-900 group-hover/t:text-blue-700 transition-colors">
+                                {tituloSinPlan(ev)}
+                              </h3>
+                              <ChevronRight size={15} strokeWidth={2}
+                                className="mt-1 flex-shrink-0 text-slate-300 group-hover/t:text-blue-600 transition-colors" />
+                            </button>
                             {planDe(ev) && (
                               <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 text-[11px] font-medium">
                                 <Users size={11} strokeWidth={2} /> {planDe(ev)}

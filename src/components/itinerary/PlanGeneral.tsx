@@ -1,9 +1,11 @@
 'use client'
+import { useState } from 'react'
 import type { Trip, Event } from '@/types'
 import { formatDate } from '@/lib/utils'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
 import { MapPin, BedDouble, Footprints, Plane, TrainFront, Sparkles, PlayCircle } from 'lucide-react'
 import { tituloSinPlan } from '@/lib/planes'
+import VideoModal from './VideoModal'
 
 /* Plan general: el viaje leído de un vistazo.
  *
@@ -78,6 +80,9 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
   { trip: Trip; events: Event[]; days: string[]; onDayClick: (d: string) => void
     anclas?: Record<string, string> }) {
 
+  // El vídeo se ve aquí dentro, no en otra pestaña.
+  const [video, setVideo] = useState<{ id: string; titulo: string } | null>(null)
+
   // Un tramo dura lo que dura un alojamiento. Los días sin hotel —los de
   // vuelo— quedan aparte, que son tránsito y no estancia.
   const tramos: Tramo[] = []
@@ -96,6 +101,7 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
 
   return (
     <div className="mb-4">
+      {video && <VideoModal videoId={video.id} titulo={video.titulo} onClose={() => setVideo(null)} />}
       {tramos.map((tr, i) => {
         const hotel = tr.hotel
 
@@ -135,9 +141,9 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
                     {conVideo.map(e => {
                       const vid = (e as any).video_id as string
                       return (
-                        <a key={e.id} href={`https://www.youtube.com/watch?v=${vid}`}
-                          target="_blank" rel="noreferrer"
-                          className="group relative flex-shrink-0 w-44 rounded-xl overflow-hidden bg-slate-900 shadow-sm hover:shadow-lg transition-shadow">
+                        <button key={e.id} type="button"
+                          onClick={() => setVideo({ id: vid, titulo: tituloSinPlan(e) })}
+                          className="group relative flex-shrink-0 w-44 rounded-xl overflow-hidden bg-slate-900 shadow-sm hover:shadow-lg transition-shadow text-left">
                           <img src={`https://i.ytimg.com/vi/${vid}/mqdefault.jpg`} alt=""
                             loading="lazy"
                             className="w-full aspect-video object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
@@ -147,7 +153,7 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
                           <span className="absolute bottom-1.5 left-2 right-2 text-[11px] font-medium text-white truncate">
                             {tituloSinPlan(e)}
                           </span>
-                        </a>
+                        </button>
                       )
                     })}
                   </div>
