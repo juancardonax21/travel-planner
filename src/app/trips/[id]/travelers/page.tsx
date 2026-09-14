@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Trip, FamilyMember, TripMember } from '@/types'
-import TripNav from '@/components/layout/TripNav'
 import { daysUntil, formatDate } from '@/lib/utils'
 import {
   Users, UserPlus, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2,
@@ -178,8 +177,7 @@ export default function TravelersPage({ params }: { params: { id: string } }) {
   )
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <TripNav trip={trip} active="travelers" />
+    <div>
       <div className="max-w-4xl mx-auto px-4 pb-12">
 
         <div className="flex items-center justify-between mb-6">

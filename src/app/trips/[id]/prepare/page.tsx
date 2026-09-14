@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Trip, FamilyMember } from '@/types'
-import TripNav from '@/components/layout/TripNav'
 import { formatDate } from '@/lib/utils'
 import {
   Sparkles, CheckCircle2, AlertTriangle, Circle, RefreshCw,
@@ -171,17 +170,10 @@ export default function PreparePage({ params }: { params: { id: string } }) {
   }, {} as Record<string, MustItem[]>) : {}
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <TripNav trip={trip} active="prepare" />
+    <div>
       <div className="max-w-4xl mx-auto px-4 pb-12 space-y-6">
 
-        {/* Print dossier button */}
-        <div className="flex justify-end mt-4">
-          <a href={`/trips/${id}/dossier`} target="_blank" rel="noopener"
-            className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl bg-slate-800 text-white hover:bg-slate-700 transition-colors">
-            <Printer size={14} strokeWidth={2} /> Generar dossier imprimible
-          </a>
-        </div>
+        
 
         {/* Requirements */}
         <div>

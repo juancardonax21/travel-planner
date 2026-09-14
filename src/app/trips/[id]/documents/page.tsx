@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Trip } from '@/types'
-import TripNav from '@/components/layout/TripNav'
 import { daysUntil, formatDate } from '@/lib/utils'
 import {
   Plane, BedDouble, Shield, FileText, Car, FolderOpen,
@@ -141,8 +140,7 @@ export default function DocumentsPage({ params }: { params: { id: string } }) {
   const alerts = items.filter(d => d.expiry && (getStatus(d.expiry) === 'warn' || getStatus(d.expiry) === 'expired')).length
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <TripNav trip={trip} active="documents" />
+    <div>
       <div className="max-w-4xl mx-auto px-4 pb-12">
 
         {alerts > 0 && (

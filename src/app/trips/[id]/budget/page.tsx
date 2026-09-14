@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Trip } from '@/types'
 import { daysUntil, formatDate, formatCurrency } from '@/lib/utils'
-import TripNav from '@/components/layout/TripNav'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Plane, BedDouble, Car, Compass, UtensilsCrossed, Tag, CheckCircle2, Circle, ArrowLeftRight, AlertTriangle, Ticket, Shield, CreditCard } from 'lucide-react'
 
@@ -90,8 +89,7 @@ export default function BudgetPage({ params }: { params: { id: string } }) {
   })).filter(d => d.value > 0)
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <TripNav trip={trip} active="budget" />
+    <div>
       <div className="max-w-4xl mx-auto px-4 pb-12">
 
         {/* Header */}

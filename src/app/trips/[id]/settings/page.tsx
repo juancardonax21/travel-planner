@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { Trip } from '@/types'
 import { fetchExchangeRate } from '@/lib/weather'
-import TripNav from '@/components/layout/TripNav'
 import CompartirViaje from '@/components/layout/CompartirViaje'
 
 const CURRENCIES = [
@@ -95,8 +94,7 @@ export default function TripSettingsPage({ params }: { params: { id: string } })
   const f = form as any
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <TripNav trip={{ ...trip, ...form } as Trip} active="settings" />
+    <div>
       <div className="max-w-2xl mx-auto px-4 pb-12">
 
         <CompartirViaje tripId={params.id} />

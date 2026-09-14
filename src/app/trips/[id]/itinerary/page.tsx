@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
 import { formatDate, CAT_CONFIG, formatCurrency } from '@/lib/utils'
 import { fetchWeather, weatherEmoji, type WeatherDay } from '@/lib/weather'
-import TripNav from '@/components/layout/TripNav'
 import dynamic from 'next/dynamic'
 import WeekView, { MODE_LABEL } from '@/components/itinerary/WeekView'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
@@ -1070,8 +1069,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
       strategy="lazyOnload"
     />
-    <div className="min-h-screen bg-slate-50">
-      <TripNav trip={trip} active="itinerary" />
+    <div>
       <div className={`${viewMode === 'week' ? 'max-w-[1180px]' : 'max-w-4xl'} mx-auto px-4 pb-12`}>
 
         {/* View toggle + day picker */}

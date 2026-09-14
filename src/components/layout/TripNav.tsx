@@ -3,24 +3,44 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Trip } from '@/types'
 import { daysUntil, formatDate } from '@/lib/utils'
-import { CalendarDays, CreditCard, FolderOpen, Users, Settings2, Sparkles } from 'lucide-react'
+import {
+  CalendarDays, CreditCard, FolderOpen, Users, Sparkles,
+  Settings2, Printer, ChevronLeft,
+} from 'lucide-react'
 import { useRolViaje } from '@/lib/rolViaje'
 
+/* Cabecera del viaje.
+ *
+ * Vive en el layout de /trips/[id], así que no se desmonta al cambiar de
+ * pestaña: solo se sustituye el contenido de abajo. */
+
+// En móvil caben siete pestañas solo con nombres cortos: "Presupuesto" y
+// "Documentos" se pisaban con las vecinas.
 const NAV_ITEMS = [
-  { key: 'itinerary',  label: 'Itinerario',  Icon: CalendarDays },
-  { key: 'budget',     label: 'Presupuesto', Icon: CreditCard },
-  { key: 'documents',  label: 'Documentos',  Icon: FolderOpen },
-  { key: 'travelers',  label: 'Viajeros',    Icon: Users },
-  { key: 'prepare',   label: 'Preparar',    Icon: Sparkles },
+  { key: 'itinerary', label: 'Itinerario',  corto: 'Plan',   Icon: CalendarDays },
+  { key: 'budget',    label: 'Presupuesto', corto: 'Gastos', Icon: CreditCard },
+  { key: 'documents', label: 'Documentos',  corto: 'Docs',   Icon: FolderOpen },
+  { key: 'travelers', label: 'Viajeros',    corto: 'Quién',  Icon: Users },
+  { key: 'prepare',   label: 'Preparar',    corto: 'Listas', Icon: Sparkles },
+  // Las dos últimas van solo con icono: son accesorias y no merecen el
+  // ancho de una etiqueta.
+  { key: 'dossier',   label: 'Dossier',     corto: 'Dossier', Icon: Printer,   soloIcono: true },
+  { key: 'settings',  label: 'Ajustes',     corto: 'Ajustes', Icon: Settings2, soloIcono: true },
 ]
 
 export default function TripNav({ trip, active }: { trip: Trip; active: string }) {
   const router = useRouter()
   const dL = daysUntil(trip.start_date)
-  const { veCostes } = useRolViaje(trip.id)
-  // A quien no ve el dinero se le retira la pestaña entera, no solo su
-  // contenido: una pestaña que lleva a una pantalla vacía desconcierta.
-  const items = NAV_ITEMS.filter(i => i.key !== 'budget' || veCostes)
+  const { rol } = useRolViaje(trip.id)
+  // La pestaña se muestra salvo que se sepa que está restringido: ocultarla
+  // mientras se averigua el papel hacía saltar la barra al cargar. Su
+  // contenido sí está protegido por las políticas de la base.
+  const items = NAV_ITEMS.filter(i => i.key !== 'budget' || rol !== 'sin_costes')
+
+  const cuenta = dL === null ? null
+    : dL > 0 ? `Faltan ${dL} días`
+    : dL === 0 ? 'Empieza hoy'
+    : 'Viaje terminado'
 
   return (
     <>
@@ -42,65 +62,66 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
         ) : (
           <div className="absolute inset-0 bg-gradient-to-r from-blue-800 via-blue-600 to-violet-600" />
         )}
+
         <div className="relative z-10 max-w-4xl mx-auto px-4">
-          <div className="flex items-start justify-between py-3 gap-2">
-            <div className="min-w-0 flex-1">
-              <button onClick={() => router.push('/trips')}
-                className="text-white/85 hover:text-white text-sm mb-1 flex items-center gap-1 transition-colors">
-                ← Mis viajes
-              </button>
-              <p className="text-white/85 text-xs uppercase tracking-widest font-mono truncate">
-                {trip.destination}
-              </p>
-              <h1 className="text-lg sm:text-xl font-bold truncate">{trip.name}</h1>
-              <p className="text-white/90 text-xs mt-0.5">
-                {formatDate(trip.start_date, 'd MMM')} — {formatDate(trip.end_date, 'd MMM yyyy')}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="text-right">
-                <div className="text-2xl sm:text-3xl font-bold font-mono leading-none">
-                  {dL === null ? '?' : dL > 0 ? dL : dL === 0 ? '✈' : '✓'}
-                </div>
-                <div className="text-white/85 text-xs uppercase tracking-wide">
-                  {dL === null ? '' : dL > 0 ? 'días' : dL === 0 ? 'hoy' : 'hecho'}
-                </div>
-              </div>
-              <Link href={`/trips/${trip.id}/settings`}
-                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
-                  active === 'settings' ? 'bg-white text-blue-700' : 'bg-white/20 hover:bg-white/30'
-                }`}>
-                <Settings2 size={15} strokeWidth={1.8} />
-              </Link>
+          {/* El viaje manda: destino, nombre y fechas. La cuenta atrás pasa a
+              ser un dato más, en pequeño, en vez de dominar la cabecera. */}
+          <div className="py-4">
+            <p className="text-white/85 text-xs uppercase tracking-[0.18em] font-mono truncate">
+              {trip.destination}
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold leading-tight truncate mt-0.5">
+              {trip.name}
+            </h1>
+            <p className="text-white/90 text-sm mt-1">
+              {formatDate(trip.start_date, 'd MMM')} — {formatDate(trip.end_date, 'd MMM yyyy')}
+              {cuenta && <span className="text-white/70"> · {cuenta}</span>}
+            </p>
+          </div>
+
+          {/* Pestañas, con la vuelta a la lista a su izquierda. */}
+          <div className="hidden sm:flex items-end gap-2">
+            <button onClick={() => router.push('/trips')}
+              className="flex items-center gap-1 text-white/85 hover:text-white text-sm pb-2.5 pr-1 transition-colors whitespace-nowrap">
+              <ChevronLeft size={15} strokeWidth={2} /> Mis viajes
+            </button>
+            <div className="flex gap-0.5 overflow-x-auto scrollbar-hide">
+              {items.map(({ key, label, Icon, soloIcono }) => (
+                <Link key={key} href={`/trips/${trip.id}/${key}`}
+                  title={soloIcono ? label : undefined}
+                  aria-label={soloIcono ? label : undefined}
+                  className={`flex items-center gap-2 py-2.5 text-sm font-medium rounded-t-xl transition-colors whitespace-nowrap ${
+                    soloIcono ? 'px-3' : 'px-4'
+                  } ${
+                    active === key
+                      ? 'bg-white text-blue-700'
+                      : 'text-white/90 hover:text-white bg-black/25 hover:bg-black/40'
+                  }`}>
+                  <Icon size={15} strokeWidth={active === key ? 2.2 : 1.8} />
+                  {!soloIcono && label}
+                </Link>
+              ))}
             </div>
           </div>
-          <div className="hidden sm:flex gap-0.5 overflow-x-auto">
-            {items.map(({ key, label, Icon }) => (
-              <Link key={key} href={`/trips/${trip.id}/${key}`}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-xl transition-all whitespace-nowrap ${
-                  active === key
-                    ? 'bg-white text-blue-700'
-                    : 'text-white/90 hover:text-white bg-black/25 hover:bg-black/40'
-                }`}>
-                <Icon size={14} strokeWidth={active === key ? 2.2 : 1.8} />
-                {label}
-              </Link>
-            ))}
-          </div>
-          <div className="sm:hidden h-2" />
+
+          {/* En móvil las pestañas van abajo: aquí solo la vuelta atrás. */}
+          <button onClick={() => router.push('/trips')}
+            className="sm:hidden flex items-center gap-1 text-white/85 text-sm pb-3 transition-colors">
+            <ChevronLeft size={15} strokeWidth={2} /> Mis viajes
+          </button>
         </div>
       </div>
 
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 shadow-lg"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 10px)' }}>
         <div className="flex">
-          {items.map(({ key, label, Icon }) => (
+          {items.map(({ key, corto, Icon }) => (
             <Link key={key} href={`/trips/${trip.id}/${key}`}
-              className={`flex-1 flex flex-col items-center gap-0.5 pt-2.5 pb-1.5 transition-colors ${
-                active === key ? 'text-blue-600' : 'text-slate-400'
+              className={`flex-1 min-w-0 flex flex-col items-center gap-0.5 pt-2.5 pb-1.5 px-0.5 transition-colors ${
+                active === key ? 'text-blue-600' : 'text-slate-500'
               }`}>
-              <Icon size={20} strokeWidth={active === key ? 2.2 : 1.8} />
-              <span className="text-xs leading-tight">{label}</span>
+              <Icon size={19} strokeWidth={active === key ? 2.2 : 1.8} />
+              <span className="text-[10px] leading-tight truncate max-w-full">{corto}</span>
             </Link>
           ))}
         </div>
