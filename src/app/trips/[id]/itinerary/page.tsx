@@ -306,7 +306,7 @@ function PresenceBar({
 
         // Render a strip across the days array
         return (
-          <div key={span.id} className="flex gap-2 mb-1 overflow-x-auto scrollbar-hide">
+          <div key={span.id} className="flex gap-2 mb-1">
             {days.map((day, i) => {
               const inRange = i >= startIdx && i <= endIdx
               const isStart = i === startIdx
@@ -1215,12 +1215,14 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
         )}
 
         {/* Presence bar — multi-day events */}
-        {viewMode === 'day' && <div className="overflow-x-auto scrollbar-hide">
+        {/* Hoteles y días comparten un único desplazamiento, para que las
+            franjas no se descuelguen de la fecha a la que pertenecen. */}
+        {viewMode === 'day' && <div className="overflow-x-auto pb-2">
+          <div className="min-w-max">
           <PresenceBar events={events} days={days} selDay={selDay}
             onSelect={day => { setSelDay(day); setShowForm(false) }} />
-        </div>}
         {/* Day picker */}
-        {viewMode === 'day' && <div className="flex gap-2 overflow-x-auto py-2 pb-4">
+          <div className="flex gap-2 py-2">
           {days.map(day => {
             const dt = new Date(day + 'T00:00:00')
             const hasEv = events.some(e => e.day === day)
@@ -1268,6 +1270,8 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
               </button>
             )
           })}
+          </div>
+          </div>
         </div>}
 
         {selDay && viewMode === 'day' && (
