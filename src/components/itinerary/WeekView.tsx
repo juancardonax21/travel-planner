@@ -18,9 +18,9 @@ const DAY_W = 190          // ancho mínimo de cada día
 // Color por categoría, tomado de la paleta de la app.
 type Paleta = { bg: string; line: string; ink: string }
 const CAT_COLOR: Record<string, Paleta> = {
-  transport: { bg: '#E0EDFF', line: '#93B4E8', ink: '#1D4ED8' },
+  transport: { bg: '#DBEAFE', line: '#60A5FA', ink: '#1D4ED8' },
   hotel:     { bg: '#D1FAE5', line: '#6EE7B7', ink: '#047857' },
-  activity:  { bg: '#EDE9FE', line: '#C4B5FD', ink: '#6D28D9' },
+  activity:  { bg: '#F5F3FF', line: '#DDD6FE', ink: '#6D28D9' },
   meal:      { bg: '#FEF3C7', line: '#FCD34D', ink: '#B45309' },
   other:     { bg: '#F1F5F9', line: '#CBD5E1', ink: '#475569' },
 }
@@ -246,11 +246,11 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                           top, height,
                           left: `calc(${lane[i] * w}% + 3px)`,
                           width: `calc(${w}% - 6px)`,
-                          background: esTraslado ? 'transparent' : pal.bg,
+                          background: pal.bg,
                           borderWidth: 1, borderRadius: 6,
                           borderColor: pal.line,
                           borderStyle: esTraslado ? 'dashed' : 'solid',
-                          borderLeft: `3px solid ${fijo ? C.shu : pal.ink}`,
+                          borderLeft: `${esTraslado ? 4 : 3}px solid ${fijo ? C.shu : pal.ink}`,
                         }}
                         className="absolute z-10 px-2 py-1.5 text-left overflow-hidden hover:brightness-[.96] hover:shadow-md transition-all">
                         <span className="flex items-center gap-1 font-mono" style={{ fontSize: 9.5, letterSpacing: '.04em', color: pal.ink }}>
@@ -270,7 +270,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                         </span>
                         <span className="block leading-tight" style={{
                           fontSize: 12.5, color: pal.ink,
-                          fontWeight: esTraslado || ev.category === 'other' ? 500 : 700,
+                          fontWeight: ev.category === 'other' ? 500 : 700,
                         }}>
                           {ev.title}
                         </span>
@@ -301,9 +301,9 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
             <span key={k} className="inline-flex items-center gap-1.5">
               <i style={{
                 width: 20, height: 12, borderRadius: 3,
-                background: k === 'transport' ? 'transparent' : p.bg,
+                background: p.bg,
                 border: `1px ${k === 'transport' ? 'dashed' : 'solid'} ${p.line}`,
-                borderLeft: `3px solid ${p.ink}`,
+                borderLeft: `${k === 'transport' ? 4 : 3}px solid ${p.ink}`,
               }} />
               {CAT_LABEL[k]}
             </span>
