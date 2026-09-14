@@ -7,6 +7,7 @@ import { MapPin, BedDouble, Footprints, Plane, TrainFront, Sparkles, PlayCircle 
 import { tituloSinPlan } from '@/lib/planes'
 import VideoModal from './VideoModal'
 import { fotoDeSitio } from '@/lib/foto'
+import Ilustracion, { seIlustra } from './Ilustracion'
 
 /* Plan general: el viaje leído de un vistazo.
  *
@@ -29,7 +30,8 @@ import { fotoDeSitio } from '@/lib/foto'
  * contestar a "¿y esto cómo es?". Primero los vídeos de las actividades y
  * después las fotos de los hoteles y de los sitios donde se come, que no
  * tienen vídeo pero sí sitio: una cena en Dotonbori es Dotonbori aunque no
- * esté elegido el restaurante.
+ * esté elegido el restaurante. Y lo que no tiene ni una cosa ni otra -un
+ * desayuno sin sitio decidido- se dibuja, para que no quede un hueco.
  */
 
 /** Ciudad a partir de la dirección geocodificada.
@@ -140,7 +142,9 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
               {(() => {
                 const videos = tr.eventos.filter(e => (e as any).video_id)
                 const fotos = tr.eventos.filter(e => !(e as any).video_id && (e as any).foto_ref)
-                if (!videos.length && !fotos.length) return null
+                const dibujos = tr.eventos.filter(e =>
+                  !(e as any).video_id && !(e as any).foto_ref && seIlustra(e))
+                if (!videos.length && !fotos.length && !dibujos.length) return null
                 const marco = 'group relative flex-shrink-0 w-44 rounded-xl overflow-hidden bg-slate-900 shadow-sm'
                 const pie = 'absolute bottom-1.5 left-2 right-2 text-[11px] font-medium text-white truncate'
                 const velo = 'absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent'
@@ -168,6 +172,15 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
                           className="w-full aspect-video object-cover opacity-90" />
                         <span className={velo} />
                         <span className={pie}>{tituloSinPlan(e)}</span>
+                      </div>
+                    ))}
+                    {/* Y al final lo que está por decidir, dibujado. */}
+                    {dibujos.map(e => (
+                      <div key={e.id} className={`${marco} bg-transparent`}>
+                        <Ilustracion ev={e} className="w-full aspect-video" />
+                        <span className="absolute bottom-1.5 left-2 right-2 text-[11px] font-medium text-slate-600 truncate">
+                          {tituloSinPlan(e)}
+                        </span>
                       </div>
                     ))}
                   </div>

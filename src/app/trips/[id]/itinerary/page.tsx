@@ -11,6 +11,7 @@ import WeekView, { MODE_LABEL } from '@/components/itinerary/WeekView'
 import { planDe, tituloSinPlan } from '@/lib/planes'
 import VideoModal from '@/components/itinerary/VideoModal'
 import { fotoDeSitio } from '@/lib/foto'
+import Ilustracion, { seIlustra } from '@/components/itinerary/Ilustracion'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import PlanGeneral from '@/components/itinerary/PlanGeneral'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
@@ -1193,6 +1194,10 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       {!e.video_id && e.foto_ref && (
                         <img src={fotoDeSitio(e.foto_ref) || ''} alt=""
                           className="mt-3 w-full aspect-video object-cover rounded-xl bg-slate-100" />
+                      )}
+                      {/* Ni vídeo ni sitio: está por decidir, y se dibuja. */}
+                      {!e.video_id && !e.foto_ref && seIlustra(detalle) && (
+                        <Ilustracion ev={detalle} className="mt-3 w-full aspect-video rounded-xl" />
                       )}
                     </div>
                     <button onClick={() => setDetalle(null)}
