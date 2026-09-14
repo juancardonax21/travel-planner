@@ -63,8 +63,8 @@ function respaldo(evs: Event[]): string {
 
 type Tramo = { ciudad: string; hotel?: Event; dias: string[]; eventos: Event[] }
 
-export default function PlanGeneral({ trip, events, days, onDayClick }:
-  { trip: Trip; events: Event[]; days: string[]; onDayClick: (d: string) => void }) {
+export default function PlanGeneral({ trip, events, days, onDayClick, veCostes = true }:
+  { trip: Trip; events: Event[]; days: string[]; onDayClick: (d: string) => void; veCostes?: boolean }) {
 
   // Un tramo dura lo que dura un alojamiento. Los días sin hotel —los de
   // vuelo— quedan aparte, que son tránsito y no estancia.
@@ -151,7 +151,7 @@ export default function PlanGeneral({ trip, events, days, onDayClick }:
               </div>
 
               <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400 flex-wrap">
-                {Object.entries(porMoneda).map(([m, v]) => (
+                {veCostes && Object.entries(porMoneda).map(([m, v]) => (
                   <span key={m} className="font-mono text-slate-600">{formatCurrency(v, m)}</span>
                 ))}
                 {pasosTramo > 0 && (

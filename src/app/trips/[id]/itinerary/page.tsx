@@ -12,6 +12,7 @@ import WeekView, { MODE_LABEL } from '@/components/itinerary/WeekView'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import PlanGeneral from '@/components/itinerary/PlanGeneral'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
+import { useRolViaje } from '@/lib/rolViaje'
 import LocationPicker from '@/components/itinerary/LocationPicker'
 
 const DayMap = dynamic(() => import('@/components/map/DayMap'), { ssr: false })
@@ -407,6 +408,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   // Pulsar un bloque abre la ficha en lectura; editar es un paso aparte.
   const [detalle, setDetalle] = useState<Event | null>(null)
   const diaSeleccionado = useRef<HTMLButtonElement | null>(null)
+  const { veCostes } = useRolViaje(id)
   const [form, setForm] = useState<any>({ ...EMPTY })
   const [segments, setSegments] = useState<Segment[]>([EMPTY_SEG()])
   const [saving, setSaving] = useState(false)
@@ -981,7 +983,8 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
           <textarea className="input" rows={2} value={form.note} onChange={e => upd('note', e.target.value)} placeholder="Notas adicionales..." />
         </div>
 
-        {/* Coste + Moneda + Pagado */}
+        {/* Coste + Moneda + Pagado — oculto a quien no ve el dinero */}
+        {veCostes && (
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1"><CreditCard size={11} strokeWidth={1.8} /> Pago</div>
           <div className="grid grid-cols-3 gap-2">
@@ -1031,6 +1034,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
             </button>
           </div>
         </div>
+        )}
         {!isAccom && (
         <>
         <div>
@@ -1107,7 +1111,8 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
         {/* Trip Route */}
         {viewMode === 'route' && (
           <PlanGeneral trip={trip} events={events} days={days}
-            onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }} />
+            onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }}
+            veCostes={veCostes} />
         )}
 
         {/* Week view */}
@@ -1120,6 +1125,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
               trip={trip} events={events} days={days}
               onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }}
               onEventClick={ev => { setSelDay(ev.day); setDetalle(ev) }}
+              veCostes={veCostes}
             />
           </div>
         )}
@@ -1166,7 +1172,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                         {pago[e.payment_method]}
                       </span>
                     )}
-                    {detalle.cost > 0 && (
+                    {detalle.cost > 0 && veCostes && (
                       <span className="badge bg-slate-100 text-slate-700 font-mono">
                         {formatCurrency(detalle.cost, e.currency || trip.currency)}
                       </span>
@@ -1536,13 +1542,13 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                     </div>
 
                     {/* Footer strip: cost + links + cancel warning */}
-                    {(ev.cost > 0 || e.ticket_url || e.confirmation_url || e.insurance_url || e.url || e.accom_web || e.accom_cancel_date) && (
+                    {((ev.cost > 0 && veCostes) || e.ticket_url || e.confirmation_url || e.insurance_url || e.url || e.accom_web || e.accom_cancel_date) && (
                       <div className="border-t border-slate-100 bg-slate-50">
 
                         {/* Actions row */}
                         <div className="flex items-center gap-3 px-4 py-2.5">
                           {/* Left: paid status + amount */}
-                          {ev.cost > 0 && (
+                          {ev.cost > 0 && veCostes && (
                             <div className="flex items-center gap-2 mr-auto">
                               <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
                                 e.paid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'

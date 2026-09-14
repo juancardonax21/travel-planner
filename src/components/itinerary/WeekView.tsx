@@ -196,9 +196,10 @@ type Props = {
   days: string[]
   onDayClick: (day: string) => void
   onEventClick?: (ev: Event) => void
+  veCostes?: boolean
 }
 
-export default function WeekView({ trip, events, days, onDayClick, onEventClick }: Props) {
+export default function WeekView({ trip, events, days, onDayClick, onEventClick, veCostes = true }: Props) {
   // En móvil cada día ocupa la pantalla y se pasa deslizando; en escritorio
   // caben varios. Se mide el contenedor, no la ventana, por si cambia el ancho.
   const caja = useRef<HTMLDivElement>(null)
@@ -407,7 +408,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                           {avisos.length > 0 && height <= 4 * SLOT_H && (
                             <AlertTriangle size={10} strokeWidth={2.4} className="flex-shrink-0" style={{ color: C.shu }} />
                           )}
-                          {ev.cost > 0 && !viene && (
+                          {ev.cost > 0 && !viene && veCostes && (
                             <span className="ml-auto flex-shrink-0 font-semibold opacity-90">
                               {formatCurrency(ev.cost, e.currency || trip.currency)}
                             </span>

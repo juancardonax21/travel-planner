@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import type { Trip } from '@/types'
 import { daysUntil, formatDate } from '@/lib/utils'
 import { CalendarDays, CreditCard, FolderOpen, Users, Settings2, Sparkles } from 'lucide-react'
+import { useRolViaje } from '@/lib/rolViaje'
 
 const NAV_ITEMS = [
   { key: 'itinerary',  label: 'Itinerario',  Icon: CalendarDays },
@@ -16,6 +17,10 @@ const NAV_ITEMS = [
 export default function TripNav({ trip, active }: { trip: Trip; active: string }) {
   const router = useRouter()
   const dL = daysUntil(trip.start_date)
+  const { veCostes } = useRolViaje(trip.id)
+  // A quien no ve el dinero se le retira la pestaña entera, no solo su
+  // contenido: una pestaña que lleva a una pantalla vacía desconcierta.
+  const items = NAV_ITEMS.filter(i => i.key !== 'budget' || veCostes)
 
   return (
     <>
@@ -70,7 +75,7 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
             </div>
           </div>
           <div className="hidden sm:flex gap-0.5 overflow-x-auto">
-            {NAV_ITEMS.map(({ key, label, Icon }) => (
+            {items.map(({ key, label, Icon }) => (
               <Link key={key} href={`/trips/${trip.id}/${key}`}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-xl transition-all whitespace-nowrap ${
                   active === key
@@ -89,7 +94,7 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 shadow-lg"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 10px)' }}>
         <div className="flex">
-          {NAV_ITEMS.map(({ key, label, Icon }) => (
+          {items.map(({ key, label, Icon }) => (
             <Link key={key} href={`/trips/${trip.id}/${key}`}
               className={`flex-1 flex flex-col items-center gap-0.5 pt-2.5 pb-1.5 transition-colors ${
                 active === key ? 'text-blue-600' : 'text-slate-400'
