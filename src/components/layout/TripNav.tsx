@@ -4,8 +4,7 @@ import { useRouter } from 'next/navigation'
 import type { Trip } from '@/types'
 import { daysUntil, formatDate } from '@/lib/utils'
 import {
-  CalendarDays, CreditCard, FolderOpen, Users, Sparkles,
-  Settings2, Printer, ChevronLeft,
+  CalendarDays, CreditCard, Settings2, Printer, ChevronLeft,
 } from 'lucide-react'
 import { useRolViaje } from '@/lib/rolViaje'
 
@@ -16,12 +15,14 @@ import { useRolViaje } from '@/lib/rolViaje'
 
 // En móvil caben siete pestañas solo con nombres cortos: "Presupuesto" y
 // "Documentos" se pisaban con las vecinas.
+/* Solo lo que se mira en viaje.
+ *
+ * Documentos, Viajeros y Preparar se consultan mientras se planifica, no con
+ * el plan delante, y ocupaban tres de las siete pestañas. Se han ido dentro
+ * de Ajustes, que pasa a ser el cajón de todo lo que no es el día a día. */
 const NAV_ITEMS = [
-  { key: 'itinerary', label: 'Itinerario',  corto: 'Plan',   Icon: CalendarDays },
-  { key: 'budget',    label: 'Presupuesto', corto: 'Gastos', Icon: CreditCard },
-  { key: 'documents', label: 'Documentos',  corto: 'Docs',   Icon: FolderOpen },
-  { key: 'travelers', label: 'Viajeros',    corto: 'Quién',  Icon: Users },
-  { key: 'prepare',   label: 'Preparar',    corto: 'Listas', Icon: Sparkles },
+  { key: 'itinerary', label: 'Itinerario',  corto: 'Plan',    Icon: CalendarDays },
+  { key: 'budget',    label: 'Presupuesto', corto: 'Gastos',  Icon: CreditCard },
   // Las dos últimas van solo con icono: son accesorias y no merecen el
   // ancho de una etiqueta.
   { key: 'dossier',   label: 'Dossier',     corto: 'Dossier', Icon: Printer,   soloIcono: true },

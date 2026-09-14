@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Camera, ImageIcon, X, Trash2 } from 'lucide-react'
+import { Camera, ImageIcon, X, Trash2, FolderOpen, Users, Sparkles, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { Trip } from '@/types'
@@ -96,6 +97,28 @@ export default function TripSettingsPage({ params }: { params: { id: string } })
   return (
     <div>
       <div className="max-w-2xl mx-auto px-4 pb-12">
+
+        {/* Lo que antes eran pestañas propias. Se consultan al preparar el
+            viaje, no con el plan delante, así que viven aquí. */}
+        <div className="card p-2 mb-4">
+          {[
+            { href: 'documents', Icon: FolderOpen, titulo: 'Documentos', pie: 'Reservas, vouchers y billetes' },
+            { href: 'travelers', Icon: Users,      titulo: 'Viajeros',   pie: 'Pasaportes, seguros y datos' },
+            { href: 'prepare',   Icon: Sparkles,   titulo: 'Preparar',   pie: 'Listas de equipaje y recados' },
+          ].map(({ href, Icon, titulo, pie }) => (
+            <Link key={href} href={`/trips/${id}/${href}`}
+              className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors">
+              <span className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                <Icon size={17} strokeWidth={1.8} className="text-slate-500" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium text-slate-800">{titulo}</span>
+                <span className="block text-xs text-slate-500">{pie}</span>
+              </span>
+              <ChevronRight size={16} strokeWidth={2} className="text-slate-300 flex-shrink-0" />
+            </Link>
+          ))}
+        </div>
 
         <CompartirViaje tripId={params.id} />
 
