@@ -6,6 +6,7 @@ import { pasosDelDia, formateaPasos } from '@/lib/pasos'
 import { MapPin, BedDouble, Footprints, Plane, TrainFront, Sparkles, PlayCircle } from 'lucide-react'
 import { tituloSinPlan } from '@/lib/planes'
 import VideoModal from './VideoModal'
+import { fotoDeSitio } from '@/lib/foto'
 
 /* Plan general: el viaje leído de un vistazo.
  *
@@ -24,8 +25,11 @@ import VideoModal from './VideoModal'
  * Aquí no se habla de dinero. El viaje se lee por lo que se hace; lo que
  * cuesta se mira entero en la pestaña de presupuesto.
  *
- * Y cada etapa abre con las miniaturas de sus vídeos, que es la forma más
- * corta de contestar a "¿y esto cómo es?".
+ * Y cada etapa abre con sus miniaturas, que es la forma más corta de
+ * contestar a "¿y esto cómo es?". Primero los vídeos de las actividades y
+ * después las fotos de los hoteles y de los sitios donde se come, que no
+ * tienen vídeo pero sí sitio: una cena en Dotonbori es Dotonbori aunque no
+ * esté elegido el restaurante.
  */
 
 /** Ciudad a partir de la dirección geocodificada.
@@ -134,28 +138,38 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
               {/* Las miniaturas van antes que la lista de días: se ve la etapa
                   antes de leerla. La imagen la sirve YouTube a partir del id. */}
               {(() => {
-                const conVideo = tr.eventos.filter(e => (e as any).video_id)
-                if (!conVideo.length) return null
+                const videos = tr.eventos.filter(e => (e as any).video_id)
+                const fotos = tr.eventos.filter(e => !(e as any).video_id && (e as any).foto_ref)
+                if (!videos.length && !fotos.length) return null
+                const marco = 'group relative flex-shrink-0 w-44 rounded-xl overflow-hidden bg-slate-900 shadow-sm'
+                const pie = 'absolute bottom-1.5 left-2 right-2 text-[11px] font-medium text-white truncate'
+                const velo = 'absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent'
                 return (
                   <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 -mx-1 px-1 pb-1">
-                    {conVideo.map(e => {
+                    {videos.map(e => {
                       const vid = (e as any).video_id as string
                       return (
                         <button key={e.id} type="button"
                           onClick={() => setVideo({ id: vid, titulo: tituloSinPlan(e) })}
-                          className="group relative flex-shrink-0 w-44 rounded-xl overflow-hidden bg-slate-900 shadow-sm hover:shadow-lg transition-shadow text-left">
-                          <img src={`https://i.ytimg.com/vi/${vid}/mqdefault.jpg`} alt=""
-                            loading="lazy"
+                          className={`${marco} text-left hover:shadow-lg transition-shadow`}>
+                          <img src={`https://i.ytimg.com/vi/${vid}/mqdefault.jpg`} alt="" loading="lazy"
                             className="w-full aspect-video object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
-                          <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
+                          <span className={velo} />
                           <PlayCircle size={30} strokeWidth={1.6}
                             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/85 group-hover:text-white group-hover:scale-110 transition-all" />
-                          <span className="absolute bottom-1.5 left-2 right-2 text-[11px] font-medium text-white truncate">
-                            {tituloSinPlan(e)}
-                          </span>
+                          <span className={pie}>{tituloSinPlan(e)}</span>
                         </button>
                       )
                     })}
+                    {/* Sin play: son fotos, no se abren. Solo enseñan el sitio. */}
+                    {fotos.map(e => (
+                      <div key={e.id} className={marco}>
+                        <img src={fotoDeSitio((e as any).foto_ref, 400) || ''} alt="" loading="lazy"
+                          className="w-full aspect-video object-cover opacity-90" />
+                        <span className={velo} />
+                        <span className={pie}>{tituloSinPlan(e)}</span>
+                      </div>
+                    ))}
                   </div>
                 )
               })()}

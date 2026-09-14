@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic'
 import WeekView, { MODE_LABEL } from '@/components/itinerary/WeekView'
 import { planDe, tituloSinPlan } from '@/lib/planes'
 import VideoModal from '@/components/itinerary/VideoModal'
+import { fotoDeSitio } from '@/lib/foto'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import PlanGeneral from '@/components/itinerary/PlanGeneral'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
@@ -1188,6 +1189,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                           <span className="absolute bottom-2 left-3 text-xs font-medium text-white">Ver cómo es</span>
                         </button>
                       )}
+                      {/* Sin vídeo pero con sitio: el hotel, o dónde se come. */}
+                      {!e.video_id && e.foto_ref && (
+                        <img src={fotoDeSitio(e.foto_ref) || ''} alt=""
+                          className="mt-3 w-full aspect-video object-cover rounded-xl bg-slate-100" />
+                      )}
                     </div>
                     <button onClick={() => setDetalle(null)}
                       className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
@@ -1613,16 +1619,14 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
                         {/* Actions row */}
                         <div className="flex items-center gap-3 px-4 py-2.5">
-                          {/* Left: paid status + amount */}
+                          {/* El importe no sale aquí: el plan se lee por lo que se
+                              hace, y el dinero se mira entero en el presupuesto.
+                              Se queda si está pagado o no, que es un recado del
+                              viaje —"esto hay que pagarlo allí"— y no un precio. */}
                           {ev.cost > 0 && veCostes && (
-                            <div className="flex items-center gap-2 mr-auto">
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
-                                e.paid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'
-                              }`}>{e.paid ? '✓ Pagado' : '○ Pendiente'}</span>
-                              <span className="font-mono font-bold text-slate-800 text-sm">
-                                {formatCurrency(ev.cost, e.currency || trip.currency)}
-                              </span>
-                            </div>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full border mr-auto ${
+                              e.paid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'
+                            }`}>{e.paid ? '✓ Pagado' : '○ Pendiente'}</span>
                           )}
                           {/* Right: 1st primary access links, 2nd seguro, 3rd cancel */}
                           {e.ticket_url && (
