@@ -1282,7 +1282,9 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 space-y-3 mb-4">
                       {([
                         ['porQue',   Lightbulb,    'Por qué merece la pena', 'text-amber-600'],
-                        ['queHacer', ListChecks,   'Qué hacer',              'text-blue-600'],
+                        // En una comida lo que se busca no es qué hacer, es qué pedir.
+                        ['queHacer', ListChecks,
+                          detalle.category === 'meal' ? 'Qué pedir' : 'Qué hacer', 'text-blue-600'],
                         ['fotos',    Camera,       'La foto',                'text-violet-600'],
                         ['comprar',  ShoppingBag,  'Que no se pase',         'text-emerald-600'],
                       ] as const).map(([clave, Icono, rotulo, color]) => {
