@@ -8,6 +8,7 @@ import { formatDate, CAT_CONFIG, formatCurrency } from '@/lib/utils'
 import { fetchWeather, weatherEmoji, type WeatherDay } from '@/lib/weather'
 import dynamic from 'next/dynamic'
 import WeekView, { MODE_LABEL } from '@/components/itinerary/WeekView'
+import { planDe, tituloSinPlan } from '@/lib/planes'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import PlanGeneral from '@/components/itinerary/PlanGeneral'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
@@ -380,7 +381,7 @@ function CheckoutChip({ events, day }: { events: any[]; day: string }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-slate-600">Check-out</p>
-            <p className="text-sm text-slate-700 truncate">{e.title}</p>
+            <p className="text-sm text-slate-700 truncate">{tituloSinPlan(e)}</p>
           </div>
           {e.accom_checkout_time && (
             <span className="text-xs font-mono text-slate-400 flex-shrink-0">
@@ -1144,7 +1145,14 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                         {formatDate(detalle.day, 'EEEE')} · {detalle.time?.slice(0,5)}
                         {e.end_time ? `–${e.end_time.slice(0,5)}` : ''}
                       </div>
-                      <h3 className="text-lg font-bold text-slate-900 leading-tight">{detalle.title}</h3>
+                      <h3 className="text-lg font-bold text-slate-900 leading-tight">{tituloSinPlan(detalle)}</h3>
+                      {/* Los días en que la familia se separa, de quién es el plan
+                          va aquí y no comiéndose el título. */}
+                      {planDe(detalle) && (
+                        <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 text-xs font-medium">
+                          <Users size={12} strokeWidth={2} /> {planDe(detalle)}
+                        </span>
+                      )}
                     </div>
                     <button onClick={() => setDetalle(null)}
                       className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
@@ -1362,7 +1370,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Check-out</p>
-                        <p className="text-sm font-medium text-slate-700 truncate">{e.title}</p>
+                        <p className="text-sm font-medium text-slate-700 truncate">{tituloSinPlan(e)}</p>
                       </div>
                       {e.accom_checkout_time && (
                         <span className="text-xs font-mono text-emerald-600 bg-emerald-100 px-2 py-1 rounded-lg flex-shrink-0">
@@ -1425,7 +1433,12 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-slate-900">{ev.title}</h3>
+                            <h3 className="font-semibold text-slate-900">{tituloSinPlan(ev)}</h3>
+                            {planDe(ev) && (
+                              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 text-[11px] font-medium">
+                                <Users size={11} strokeWidth={2} /> {planDe(ev)}
+                              </span>
+                            )}
                             {ev.location && <p className="text-sm text-slate-500 mt-0.5 flex items-center gap-1"><MapPin size={12} strokeWidth={1.8} className="flex-shrink-0" />{ev.location}</p>}
                             {ev.note && <p className="text-sm text-slate-400 mt-1 italic">{ev.note}</p>}
 

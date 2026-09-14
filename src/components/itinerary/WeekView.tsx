@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Trip, Event } from '@/types'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
+import { planDe, tituloSinPlan } from '@/lib/planes'
 
 import {
   Plane, BedDouble, Compass, UtensilsCrossed, Car, Tag, Bike, Bus, Footprints,
@@ -19,7 +20,8 @@ const DAY_W = 215          // ancho de cada día en escritorio
 const MOVIL = 768          // por debajo, un día ocupa la pantalla entera
 const HITO_H = 26          // alto del hito; en móvil sube para poder tocarlo
 const HITO_H_MOVIL = 40
-const HEAD_H = 66          // alto de la cabecera de días, para fijar la franja de hotel
+const HEAD_H = 66          // alto de partida de la cabecera; luego se mide
+const FILA_PLAN_H = 20     // rótulo de los planes en paralelo, cuando el día lo tiene
 
 // Color por categoría, tomado de la paleta de la app.
 type Paleta = { bg: string; line: string; ink: string }
@@ -169,13 +171,6 @@ function hitosDelDia(events: Event[], day: string) {
   return out.sort((a, b) => a.t - b.t)
 }
 
-/** El prefijo del título es lo único que dice de quién es un evento cuando la
- *  familia se separa: "Mamá · Sumiyoshi Taisha", "Papá y niños · Universal". */
-const prefijoDe = (ev: Event): string | null => {
-  const i = (ev.title || '').indexOf(' · ')
-  return i > 0 && i <= 24 ? ev.title.slice(0, i) : null
-}
-
 /** Carriles por plan, no por geometría.
  *
  *  El reparto normal busca el primer carril libre, así que en cuanto un plan
@@ -189,7 +184,7 @@ const prefijoDe = (ev: Event): string | null => {
 function carrilesPorPlan(items: Trozo[]) {
   const planes: string[] = []
   for (const t of items) {
-    const p = prefijoDe(t.ev)
+    const p = planDe(t.ev)
     if (p && !planes.includes(p)) planes.push(p)
   }
   if (planes.length < 2) return null
@@ -197,14 +192,15 @@ function carrilesPorPlan(items: Trozo[]) {
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
       if (!se_pisan(items[i], items[j])) continue
-      const a = prefijoDe(items[i].ev), b = prefijoDe(items[j].ev)
+      const a = planDe(items[i].ev), b = planDe(items[j].ev)
       if (a === b) return null          // dos cosas del mismo plan a la vez
       if (!a || !b) return null         // algo común encima de un plan
     }
   }
   return {
-    lane: items.map(t => { const p = prefijoDe(t.ev); return p ? planes.indexOf(p) : 0 }),
-    total: items.map(t => (prefijoDe(t.ev) ? planes.length : 1)),
+    planes,
+    lane: items.map(t => { const p = planDe(t.ev); return p ? planes.indexOf(p) : 0 }),
+    total: items.map(t => (planDe(t.ev) ? planes.length : 1)),
   }
 }
 
@@ -263,6 +259,20 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
     window.addEventListener('resize', medir)
     return () => window.removeEventListener('resize', medir)
   }, [])
+  // La franja de hotel se queda pegada justo debajo de la cabecera, así que
+  // necesita su alto exacto. Se mide en vez de darlo por supuesto: cambia con
+  // el rótulo de planes y con la línea de pasos, que no todos los días tienen.
+  const cabecera = useRef<HTMLDivElement>(null)
+  const [altoCabecera, setAltoCabecera] = useState(HEAD_H)
+  useEffect(() => {
+    const el = cabecera.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setAltoCabecera(el.offsetHeight))
+    ro.observe(el)
+    setAltoCabecera(el.offsetHeight)
+    return () => ro.disconnect()
+  }, [])
+
   const hitoH = movil ? HITO_H_MOVIL : HITO_H
   // rango horario: 7:00–23:00 por defecto, ampliado si hay eventos fuera
   let startH = 7, endH = 23
@@ -286,7 +296,9 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
      cruza la columna, porque parecería que valen para todos. */
   const porDia = days.map(day => {
     const todos = trozosDelDia(events, day, originMin, endH * 60)
-    const { lane, total } = carrilesPorPlan(todos) ?? assignLanes(todos)
+    const porPlan = carrilesPorPlan(todos)
+    const { lane, total } = porPlan ?? assignLanes(todos)
+    const planes = porPlan?.planes ?? []
     const bloques: Colocado[] = []
     const franjas: Colocado[] = []
     todos.forEach((t, i) => (t.momento ? franjas : bloques)
@@ -294,9 +306,10 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
     // El ancho lo deciden los bloques, no las franjas: un traslado que roza
     // el plan siguiente por un minuto no debe ensanchar el día entero.
     const carriles = bloques.reduce((a, b) => Math.max(a, b.total), 1)
-    return { day, bloques, franjas, ancho: anchoDia * (movil ? 1 : Math.min(carriles, 2)) }
+    return { day, bloques, franjas, planes, ancho: anchoDia * (movil ? 1 : Math.min(carriles, 2)) }
   })
   const anchoDe = new Map(porDia.map(p => [p.day, p.ancho]))
+  const planesDe = new Map(porDia.map(p => [p.day, p.planes]))
   const anchoTotal = porDia.reduce((s, p) => s + p.ancho, 0)
 
   return (
@@ -307,13 +320,14 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
         <div style={{ minWidth: RAIL_W + anchoTotal }}>
 
           {/* ── cabecera de días ── */}
-          <div className="flex sticky top-0 z-30" style={{ borderBottom: `2px solid ${C.ink}`, background: C.surface }}>
+          <div ref={cabecera} className="flex sticky top-0 z-30" style={{ borderBottom: `2px solid ${C.ink}`, background: C.surface }}>
             <div style={{ width: RAIL_W, background: C.surface }}
               className="flex-shrink-0 sticky left-0 z-40" />
             {days.map(day => {
               const dt = new Date(day + 'T00:00:00')
               const evs = events.filter(e => e.day === day)
               const place = dayPlaces(evs)
+              const planes = planesDe.get(day) ?? []
               return (
                 <button key={day} onClick={() => onDayClick(day)}
                   style={{ width: anchoDe.get(day), borderLeft: `1px solid ${C.rule}`, scrollSnapAlign: 'start' }}
@@ -337,6 +351,19 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                       </span>
                     )
                   })()}
+                  {/* Día con dos planes: cada carril lleva su nombre aquí arriba,
+                      para que las etiquetas no tengan que repetirlo una por una. */}
+                  {planes.length > 1 && (
+                    <span className="flex mt-1.5 -mx-2 -mb-2" style={{ height: FILA_PLAN_H, borderTop: `1px solid ${C.rule}` }}>
+                      {planes.map((plan, i) => (
+                        <span key={plan} className="flex-1 min-w-0 truncate font-mono uppercase flex items-center justify-center"
+                          style={{ fontSize: 10, letterSpacing: '.1em', color: C.accent,
+                                   borderLeft: i ? `1px solid ${C.rule}` : undefined }}>
+                          {plan}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </button>
               )
             })}
@@ -344,7 +371,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
 
           {/* ── franja de alojamiento: qué hotel toca cada noche ── */}
           {hoteles.length > 0 && (
-            <div className="flex sticky z-20" style={{ top: HEAD_H, background: C.surface, borderBottom: `1px solid ${C.ruleStrong}` }}>
+            <div className="flex sticky z-20" style={{ top: altoCabecera, background: C.surface, borderBottom: `1px solid ${C.ruleStrong}` }}>
               <div style={{ width: RAIL_W, background: C.surface }}
                 className="flex-shrink-0 sticky left-0 z-30 flex items-center justify-end pr-2">
                 <BedDouble size={11} strokeWidth={2} style={{ color: C.faint }} />
@@ -453,7 +480,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                             style={{ fontSize: 11, background: color, color: '#fff', maxWidth: '100%',
                                      padding: movil ? '8px 10px' : '3px 7px' }}>
                             <Icon size={12} strokeWidth={2.4} className="flex-shrink-0" />
-                            <span className="truncate">{minsToHHMM(start)} · {ev.title}</span>
+                            <span className="truncate">{minsToHHMM(start)} · {tituloSinPlan(ev)}</span>
                           </span>
                         </button>
                       )
@@ -526,7 +553,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                           fontSize: 13, color: pal.ink,
                           fontWeight: ev.category === 'other' ? 500 : 700,
                         }}>
-                          {ev.title}
+                          {tituloSinPlan(ev)}
                         </span>
                         {avisos.length > 0 && height > 4 * SLOT_H && (
                           <span className="block leading-snug mt-1"
