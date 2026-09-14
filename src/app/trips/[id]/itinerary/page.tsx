@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves, TrainFront, FileCheck2, Banknote, ChevronRight, PlayCircle } from 'lucide-react'
+import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves, TrainFront, FileCheck2, Banknote, ChevronRight, PlayCircle, Lightbulb, ListChecks, Camera, ShoppingBag } from 'lucide-react'
 import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
@@ -415,6 +415,9 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const [detalle, setDetalle] = useState<Event | null>(null)
   // El vídeo se ve dentro de la aplicación, encima del plan.
   const [video, setVideo] = useState<{ id: string; titulo: string } | null>(null)
+  // Los días en que la familia se separa traen dos planes mezclados por hora.
+  // Este filtro deja leer uno solo. null = todo junto.
+  const [planFiltro, setPlanFiltro] = useState<string | null>(null)
   const diaSeleccionado = useRef<HTMLButtonElement | null>(null)
   const { veCostes } = useRolViaje(id)
   const [form, setForm] = useState<any>({ ...EMPTY })
@@ -434,6 +437,9 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     if (viewMode !== 'day') return
     diaSeleccionado.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
   }, [selDay, viewMode])
+
+  // El filtro de plan es de un día concreto: al cambiar de día se suelta.
+  useEffect(() => { setPlanFiltro(null) }, [selDay])
 
   // Escape cierra lo que esté abierto, de dentro afuera.
   useEffect(() => {
@@ -704,7 +710,18 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     days.push(`${y}-${m}-${dd}`)
   }
 
-  const dayEvents = events.filter(e => e.day === selDay).sort((a, b) => a.time.localeCompare(b.time))
+  const todosDelDia = events.filter(e => e.day === selDay).sort((a, b) => a.time.localeCompare(b.time))
+  // Los planes de ese día, por orden de aparición.
+  const planesDelDia: string[] = []
+  todosDelDia.forEach(e => {
+    const pl = planDe(e)
+    if (pl && !planesDelDia.includes(pl)) planesDelDia.push(pl)
+  })
+  // Lo común -la separación de la mañana, la cena de reencuentro- se ve
+  // siempre: es de los dos planes, no de ninguno.
+  const dayEvents = planFiltro
+    ? todosDelDia.filter(e => !planDe(e) || planDe(e) === planFiltro)
+    : todosDelDia
   const dayW = selDay ? weather[selDay] : null
   const eventsWithCoords = dayEvents.filter(e => e.lat && e.lng)
   const isFlight = form.category === 'transport' && form.travel_mode === 'flight'
@@ -1248,6 +1265,33 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                     </div>
                   )}
 
+                  {/* Lo práctico: lo que uno quiere saber delante del sitio.
+                      Cada cosa con su icono, porque se leen de un vistazo y
+                      distinto: el porqué se lee una vez, "no olvidar" se
+                      busca con prisa. */}
+                  {e.practico && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 space-y-3 mb-4">
+                      {([
+                        ['porQue',   Lightbulb,    'Por qué merece la pena', 'text-amber-600'],
+                        ['queHacer', ListChecks,   'Qué hacer',              'text-blue-600'],
+                        ['fotos',    Camera,       'La foto',                'text-violet-600'],
+                        ['comprar',  ShoppingBag,  'Que no se pase',         'text-emerald-600'],
+                      ] as const).map(([clave, Icono, rotulo, color]) => {
+                        const texto = (e.practico as any)?.[clave]
+                        if (!texto) return null
+                        return (
+                          <div key={clave} className="flex gap-2.5">
+                            <Icono size={15} strokeWidth={1.9} className={`flex-shrink-0 mt-0.5 ${color}`} />
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{rotulo}</p>
+                              <p className="text-sm text-slate-700 leading-snug mt-0.5">{texto}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
                   <div className="flex flex-wrap gap-2 mb-4">
                     {e.ticket_url && <a href={e.ticket_url} target="_blank" rel="noopener"
                       className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl"><Ticket size={12} /> Billetes</a>}
@@ -1345,6 +1389,24 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
         {selDay && viewMode === 'day' && (
           <>
+            {/* Día con la familia separada: dos planes mezclados por hora se
+                leen fatal. Esto deja seguir uno solo, y lo común sigue
+                saliendo en los dos porque es de todos. */}
+            {planesDelDia.length > 1 && (
+              <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                <Users size={14} strokeWidth={1.8} className="text-slate-400 mr-0.5" />
+                {[null, ...planesDelDia].map(pl => (
+                  <button key={pl ?? 'todo'} onClick={() => setPlanFiltro(pl)}
+                    className={`text-xs font-medium px-3 py-1.5 rounded-xl border transition-colors ${
+                      planFiltro === pl
+                        ? 'bg-violet-600 text-white border-violet-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300'
+                    }`}>
+                    {pl ?? 'Todo el día'}
+                  </button>
+                ))}
+              </div>
+            )}
             {(() => {
               const p = pasosDelDia(dayEvents)
               if (!p.pasos) return null
