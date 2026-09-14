@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves, TrainFront, FileCheck2, Banknote, ChevronRight } from 'lucide-react'
 import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
@@ -406,6 +406,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const [editEvent, setEditEvent] = useState<Event | null>(null)
   // Pulsar un bloque abre la ficha en lectura; editar es un paso aparte.
   const [detalle, setDetalle] = useState<Event | null>(null)
+  const diaSeleccionado = useRef<HTMLButtonElement | null>(null)
   const [form, setForm] = useState<any>({ ...EMPTY })
   const [segments, setSegments] = useState<Segment[]>([EMPTY_SEG()])
   const [saving, setSaving] = useState(false)
@@ -418,6 +419,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (window.innerWidth < 768) setViewMode('day')
   }, [])
+
+  useEffect(() => {
+    if (viewMode !== 'day') return
+    diaSeleccionado.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  }, [selDay, viewMode])
 
   // Escape cierra lo que esté abierto, de dentro afuera.
   useEffect(() => {
@@ -1233,7 +1239,8 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
             const hasEv = events.some(e => e.day === day)
             const isOn = selDay === day
             return (
-              <button key={day} onClick={() => { setSelDay(day); setShowForm(false) }}
+              <button key={day} ref={isOn ? diaSeleccionado : null}
+                onClick={() => { setSelDay(day); setShowForm(false) }}
                 className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-2xl min-w-[62px] transition-all ${
                   isOn ? 'bg-gradient-to-b from-blue-600 to-violet-600 text-white shadow-lg scale-105'
                        : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-300'

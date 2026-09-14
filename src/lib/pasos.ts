@@ -46,11 +46,15 @@ export function pasosDelDia(eventos: Event[]): Pasos {
   orden.forEach((ev, i) => {
     if (ev.category !== 'transport') return
     if ((ev as any).travel_mode !== 'walking') return
-    // El trayecto va del evento anterior al siguiente con coordenadas.
+    if (!(ev as any).lat) return          // sin destino conocido no se inventa
+    // Se mide hasta el punto del propio traslado, que es adonde se llega.
+    // Antes se medía hasta el siguiente evento con coordenadas, y si ese era
+    // un bus al aeropuerto salía un paseo de 73 km.
     const antes = orden.slice(0, i).reverse().find(e => (e as any).lat)
-    const despues = orden.slice(i + 1).find(e => (e as any).lat)
-    const d = antes && despues ? km(antes, despues) : 0
-    if (d > 0) { kmTotal += d * RODEO; tramos++ }
+    const d = antes ? km(antes, ev) : 0
+    // Nadie va andando más de 5 km entre dos paradas del plan: si sale más,
+    // es que los datos están mal y es preferible no contarlo.
+    if (d > 0 && d <= 5) { kmTotal += d * RODEO; tramos++ }
   })
 
   const dentro = orden.reduce((s, e) =>

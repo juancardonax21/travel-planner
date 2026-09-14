@@ -74,7 +74,7 @@ export default function TripNav({ trip, active }: { trip: Trip; active: string }
               <Link key={key} href={`/trips/${trip.id}/${key}`}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-xl transition-all whitespace-nowrap ${
                   active === key
-                    ? 'bg-white text-blue-700 shadow-sm'
+                    ? 'bg-white text-blue-700'
                     : 'text-white/90 hover:text-white bg-black/25 hover:bg-black/40'
                 }`}>
                 <Icon size={14} strokeWidth={active === key ? 2.2 : 1.8} />
