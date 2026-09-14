@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { UserPlus, LogIn } from 'lucide-react'
+import { guardarPendiente, olvidarPendiente } from '@/lib/invitacion'
 
 /* Pantalla de invitación.
  *
@@ -19,8 +20,10 @@ export default function Invitacion({ params }: { params: { token: string } }) {
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
 
-  // Si ya hay sesión, se canjea directamente.
   useEffect(() => {
+    // Se apunta el código nada más abrir: si hay que confirmar el correo, la
+    // persona sale de aquí y vuelve por otra puerta, y así no se pierde.
+    guardarPendiente(params.token)
     supabase.auth.getUser().then(({ data }) => { if (data.user) canjear() })
   }, [])
 
@@ -30,8 +33,12 @@ export default function Invitacion({ params }: { params: { token: string } }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: params.token }),
     })
-    const j = await res.json()
-    if (!res.ok) { setError(j.error || 'No se pudo aceptar la invitación.'); setCargando(false); return }
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setError((j.error || 'No se pudo aceptar la invitación.') + ` (${res.status})`)
+      setCargando(false); return
+    }
+    olvidarPendiente()
     router.push(`/trips/${j.trip_id}/itinerary`)
   }
 
@@ -44,7 +51,8 @@ export default function Invitacion({ params }: { params: { token: string } }) {
       if (error) { setError(traduce(error.message)); setCargando(false); return }
       // Si el proyecto exige confirmar el correo, no hay sesión todavía.
       if (!data.session) {
-        setAviso('Te hemos enviado un correo para confirmar la cuenta. Ábrelo y vuelve a este enlace.')
+        setAviso('Cuenta creada. Te hemos enviado un correo para confirmarla: '
+          + 'ábrelo y, al volver, el viaje ya estará esperándote.')
         setCargando(false); return
       }
     } else {

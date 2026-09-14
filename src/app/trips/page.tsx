@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { canjearPendiente } from '@/lib/invitacion'
 import type { Trip } from '@/types'
 import { formatDate, daysUntil } from '@/lib/utils'
 import Link from 'next/link'
@@ -96,11 +97,14 @@ export default function TripsPage() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { router.push('/login'); return }
       setUser(data.user)
-      supabase.from('trips')
+      // Sin filtro por propietario: las políticas ya deciden qué se ve, y así
+      // aparecen también los viajes que otro ha compartido contigo.
+      const cargar = () => supabase.from('trips')
         .select('*, travelers(*)')
-        .eq('user_id', data.user.id)
         .order('start_date')
         .then(({ data: t }) => { setTrips(t || []); setLoading(false) })
+      // Si se llegó aquí con una invitación a medio canjear, se completa.
+      canjearPendiente().then(id => { if (id) router.push(`/trips/${id}/itinerary`); else cargar() })
     })
   }, [])
 
