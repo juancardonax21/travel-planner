@@ -13,6 +13,25 @@ import { NextResponse } from 'next/server'
  * revocado, y que quien lo canjea haya iniciado sesión de verdad.
  */
 export async function POST(request: Request) {
+  try {
+    return await canjear(request)
+  } catch (e: any) {
+    // Sin esto, cualquier excepción sale como un 500 vacío y quien lo recibe
+    // no puede distinguir un fallo de configuración de un token inválido.
+    console.error('[invitacion] fallo inesperado:', e)
+    return NextResponse.json(
+      { error: 'Error del servidor al aceptar la invitación: ' + (e?.message || 'desconocido') },
+      { status: 500 })
+  }
+}
+
+async function canjear(request: Request) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json({
+      error: 'Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor. '
+           + 'Añádela en Vercel, en Settings → Environment Variables, y vuelve a desplegar.',
+    }, { status: 500 })
+  }
   const { token } = await request.json().catch(() => ({ token: null }))
   if (!token || typeof token !== 'string') {
     return NextResponse.json({ error: 'Falta el código de invitación.' }, { status: 400 })
@@ -27,7 +46,10 @@ export async function POST(request: Request) {
       cookies: {
         getAll: () => store.getAll(),
         setAll: (cs: { name: string; value: string; options: CookieOptions }[]) => {
-          cs.forEach(({ name, value, options }) => store.set(name, value, options))
+          // En un route handler escribir cookies puede no estar permitido según
+          // el contexto; aquí solo se lee la sesión, así que no es crítico.
+          try { cs.forEach(({ name, value, options }) => store.set(name, value, options)) }
+          catch { /* se ignora */ }
         },
       },
     }
@@ -59,7 +81,8 @@ export async function POST(request: Request) {
             { onConflict: 'trip_id,user_id' })
 
   if (error) {
-    return NextResponse.json({ error: 'No se pudo dar de alta el acceso.' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'No se pudo dar de alta el acceso: ' + error.message }, { status: 500 })
   }
   return NextResponse.json({ trip_id: inv.trip_id })
 }
