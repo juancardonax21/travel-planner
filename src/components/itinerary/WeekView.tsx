@@ -79,6 +79,10 @@ function noteLines(note?: string | null): string[] {
   return note.split(' · ').map(s => s.trim()).filter(Boolean)
 }
 const isWarn = (line: string) => line.startsWith('⚠')
+// El desglose del coste ya se ve en la etiqueta del importe: en la rejilla
+// sobra como texto. Sigue estando en la ficha al abrir el evento.
+const esCoste = (line: string) => line.startsWith('Coste ')
+const MAX_NOTAS = 2        // líneas informativas; los avisos no se recortan
 
 /** Ciudades del día, sacadas de las ubicaciones ya geocodificadas. */
 function dayPlaces(evs: Event[]): string {
@@ -217,7 +221,11 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                     if (start >= endH * 60) return null
 
                     const e = ev as any
-                    const lines = noteLines(e.note)
+                    const todas = noteLines(e.note)
+                    const avisos = todas.filter(isWarn)
+                    const sueltas = todas.filter(l => !isWarn(l) && !esCoste(l))
+                    const recortadas = sueltas.length > MAX_NOTAS
+                    const lines = [...avisos, ...sueltas.slice(0, MAX_NOTAS)]
                     const fijo = Boolean(e.fixed_time)
                     const contratado = Boolean(e.ticket_url || e.confirmation_url || e.paid)
                     const pal = CAT_COLOR[ev.category] || CAT_COLOR.other
@@ -252,6 +260,11 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                             {overnight ? ' →' : ''}
                           </span>
                           {contratado && <CheckCircle2 size={10} strokeWidth={2.4} className="flex-shrink-0" />}
+                          {ev.cost > 0 && (
+                            <span className="ml-auto flex-shrink-0 font-semibold opacity-90">
+                              {formatCurrency(ev.cost, e.currency || trip.currency)}
+                            </span>
+                          )}
                         </span>
                         <span className="block leading-tight" style={{
                           fontSize: 12.5, color: pal.ink,
@@ -260,16 +273,13 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                           {ev.title}
                         </span>
                         {height > 60 && lines.map((l, k) => (
-                          <span key={k} className="block leading-snug mt-0.5"
-                            style={{ fontSize: 10.8, color: isWarn(l) ? C.shu : C.ink2, opacity: isWarn(l) ? 1 : .75, fontWeight: isWarn(l) ? 500 : 400 }}>
+                          <span key={k} className="block leading-snug mt-1"
+                            style={{ fontSize: 10.5, color: isWarn(l) ? C.shu : C.muted, fontWeight: isWarn(l) ? 500 : 400 }}>
                             {l}
                           </span>
                         ))}
-                        {ev.cost > 0 && height > 44 && (
-                          <span className="inline-block font-mono mt-1 px-1.5 py-0.5 rounded"
-                            style={{ fontSize: 9.5, color: pal.ink, background: '#FFFFFFAA', border: `1px solid ${pal.line}` }}>
-                            {formatCurrency(ev.cost, e.currency || trip.currency)}
-                          </span>
+                        {recortadas && height > 60 && (
+                          <span className="block leading-none mt-1" style={{ fontSize: 10.8, color: C.faint }}>…</span>
                         )}
                       </button>
                     )
