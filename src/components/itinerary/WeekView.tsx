@@ -102,6 +102,10 @@ function dayPlaces(evs: Event[]): string {
   return seen.slice(0, 2).join(' · ')
 }
 
+const MINUTO_HITO = 30
+const esMomento = (ev: Event, dur: number) =>
+  dur <= MINUTO_HITO && (ev.category === 'transport' || ev.category === 'other')
+
 type Trozo = { ev: Event; start: number; end: number; sigue: boolean; viene: boolean }
 
 /** Trozos que le tocan a un día: los que empiezan en él y la cola de los que
@@ -117,22 +121,32 @@ function trozosDelDia(events: Event[], day: string, minDia: number, maxDia: numb
     const a = Math.max(start - desfase, minDia)
     const b = Math.min(end - desfase, maxDia)
     if (b <= a) continue
+    if (esMomento(ev, end - start)) continue
     out.push({ ev, start: a, end: b, sigue: end - desfase > maxDia, viene: dias > 0 })
   }
   return out.sort((x, y) => x.start - y.start || y.end - x.end)
 }
 
-/** Check-in y check-out, como hitos que cruzan la columna. */
-function hitosDelDia(hoteles: Event[], day: string) {
-  const out: { t: number; texto: string; ev: Event }[] = []
-  for (const h of hoteles) {
-    const e = h as any
-    if (e.accom_checkin_date === day && e.accom_checkin_time)
-      out.push({ t: timeToMins(e.accom_checkin_time), texto: 'Check-in · ' + h.title, ev: h })
-    if (e.accom_checkout_date === day && e.accom_checkout_time)
-      out.push({ t: timeToMins(e.accom_checkout_time), texto: 'Check-out · ' + h.title, ev: h })
+/** Hitos del día: entradas y salidas de hotel, y los traslados o recados
+ *  demasiado breves para dibujarse como bloque. Se apilan si caen juntos. */
+function hitosDelDia(events: Event[], day: string) {
+  const out: { t: number; texto: string; ev: Event; color: string }[] = []
+  for (const ev of events) {
+    const e = ev as any
+    if (ev.category === 'hotel') {
+      if (e.accom_checkin_date === day && e.accom_checkin_time)
+        out.push({ t: timeToMins(e.accom_checkin_time), texto: 'Check-in · ' + ev.title, ev, color: CAT_COLOR.hotel.ink })
+      if (e.accom_checkout_date === day && e.accom_checkout_time)
+        out.push({ t: timeToMins(e.accom_checkout_time), texto: 'Check-out · ' + ev.title, ev, color: CAT_COLOR.hotel.ink })
+      continue
+    }
+    if (ev.day !== day) continue
+    const { start, end } = eventRange(ev)
+    if (!esMomento(ev, end - start)) continue
+    out.push({ t: start, texto: `${minsToHHMM(start)} · ${ev.title}`, ev,
+               color: (CAT_COLOR[ev.category] || CAT_COLOR.other).ink })
   }
-  return out
+  return out.sort((a, b) => a.t - b.t)
 }
 
 /** Reparte en carriles los bloques que se solapan.
@@ -272,7 +286,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
             {days.map(day => {
               const dayEvents = trozosDelDia(events, day, originMin, endH * 60)
               const { lane, total } = assignLanes(dayEvents)
-              const hitos = hitosDelDia(hoteles, day)
+              const hitos = hitosDelDia(events, day)
 
               return (
                 <div key={day} style={{ width: DAY_W, borderLeft: `1px solid ${C.rule}` }}
@@ -287,16 +301,23 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                     onClick={() => onDayClick(day)} aria-label={`Ver ${day}`} />
 
                   {/* Hitos de alojamiento: cruzan la columna sin ocupar carril */}
-                  {hitos.map((h, k) => (
-                    <button key={k} onClick={e => { e.stopPropagation(); onEventClick ? onEventClick(h.ev) : onDayClick(day) }}
-                      style={{ top: yOf(h.t) - 1, borderTop: `2px dashed ${CAT_COLOR.hotel.ink}` }}
-                      className="absolute left-0 right-0 z-[5] flex items-center group/h">
-                      <span className="px-1.5 rounded-br font-mono truncate"
-                        style={{ fontSize: 9, background: CAT_COLOR.hotel.ink, color: '#fff', maxWidth: '100%' }}>
-                        {h.texto}
-                      </span>
-                    </button>
-                  ))}
+                  {(() => {
+                    let ocupadoHasta = -Infinity
+                    return hitos.map((h, k) => {
+                      const y = Math.max(yOf(h.t), ocupadoHasta)
+                      ocupadoHasta = y + 15
+                      return (
+                        <button key={k} onClick={e => { e.stopPropagation(); onEventClick ? onEventClick(h.ev) : onDayClick(day) }}
+                          style={{ top: y - 1, borderTop: `2px dashed ${h.color}` }}
+                          className="absolute left-0 right-0 z-20 flex items-center">
+                          <span className="px-1.5 rounded-br font-mono truncate shadow-sm"
+                            style={{ fontSize: 9, background: h.color, color: '#fff', maxWidth: '100%' }}>
+                            {h.texto}
+                          </span>
+                        </button>
+                      )
+                    })
+                  })()}
 
                   {dayEvents.map(({ ev, start, end, sigue, viene }, i) => {
                     const top = yOf(start)
