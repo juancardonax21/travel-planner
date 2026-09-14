@@ -1061,24 +1061,18 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
         {/* View toggle + day picker */}
         <div className="flex items-center justify-between mb-2 pt-2">
           <div className="flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
-            <button onClick={() => setViewMode('week')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                viewMode === 'week' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-              }`}>
-              <LayoutGrid size={13} strokeWidth={2} /> Vista general
-            </button>
-            <button onClick={() => setViewMode('route')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                viewMode === 'route' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-              }`}>
-              <MapPin size={13} strokeWidth={2} /> Ruta
-            </button>
-            <button onClick={() => setViewMode('day')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                viewMode === 'day' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-              }`}>
-              <List size={13} strokeWidth={2} /> Vista día
-            </button>
+            {([
+              { v: 'route', label: 'Plan general', Icon: MapPin },
+              { v: 'week',  label: 'Cuadrícula',   Icon: LayoutGrid },
+              { v: 'day',   label: 'Vista día',    Icon: List },
+            ] as const).map(o => (
+              <button key={o.v} onClick={() => setViewMode(o.v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  viewMode === o.v ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                }`}>
+                <o.Icon size={13} strokeWidth={2} /> {o.label}
+              </button>
+            ))}
           </div>
           <div className="flex gap-2">
             {(() => {
