@@ -98,30 +98,6 @@ export default function TripSettingsPage({ params }: { params: { id: string } })
     <div>
       <div className="max-w-2xl mx-auto px-4 pb-12">
 
-        {/* Lo que antes eran pestañas propias. Se consultan al preparar el
-            viaje, no con el plan delante, así que viven aquí. */}
-        <div className="card p-2 mb-4">
-          {[
-            { href: 'documents', Icon: FolderOpen, titulo: 'Documentos', pie: 'Reservas, vouchers y billetes' },
-            { href: 'travelers', Icon: Users,      titulo: 'Viajeros',   pie: 'Pasaportes, seguros y datos' },
-            { href: 'prepare',   Icon: Sparkles,   titulo: 'Preparar',   pie: 'Listas de equipaje y recados' },
-          ].map(({ href, Icon, titulo, pie }) => (
-            <Link key={href} href={`/trips/${id}/${href}`}
-              className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors">
-              <span className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-                <Icon size={17} strokeWidth={1.8} className="text-slate-500" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium text-slate-800">{titulo}</span>
-                <span className="block text-xs text-slate-500">{pie}</span>
-              </span>
-              <ChevronRight size={16} strokeWidth={2} className="text-slate-300 flex-shrink-0" />
-            </Link>
-          ))}
-        </div>
-
-        <CompartirViaje tripId={params.id} />
-
         {/* Cover photo */}
         <div className="card p-6 mb-4">
           <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2"><ImageIcon size={16} strokeWidth={1.8} className="text-slate-400" /> Foto de portada</h2>
@@ -180,6 +156,24 @@ export default function TripSettingsPage({ params }: { params: { id: string } })
           </div>
         </div>
 
+        {/* Quién viaja va pegado a los datos del viaje, que es de lo que
+            habla: el viaje y las personas. */}
+        <div className="card p-2 mb-4">
+          {[{ href: 'travelers', Icon: Users, titulo: 'Viajeros', pie: 'Pasaportes, seguros y datos de cada uno' }].map(({ href, Icon, titulo, pie }) => (
+            <Link key={href} href={`/trips/${id}/${href}`}
+              className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors">
+              <span className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                <Icon size={17} strokeWidth={1.8} className="text-slate-500" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium text-slate-800">{titulo}</span>
+                <span className="block text-xs text-slate-500">{pie}</span>
+              </span>
+              <ChevronRight size={16} strokeWidth={2} className="text-slate-300 flex-shrink-0" />
+            </Link>
+          ))}
+        </div>
+
         {/* Currency */}
         <div className="card p-6 mb-4">
           <h2 className="font-semibold text-slate-800 mb-4">Moneda y tipo de cambio</h2>
@@ -226,6 +220,28 @@ export default function TripSettingsPage({ params }: { params: { id: string } })
           </button>
           <button onClick={() => router.back()} className="btn-secondary px-6">Cancelar</button>
         </div>
+
+        {/* Lo que se consulta al preparar el viaje, no con el plan delante. */}
+        <div className="card p-2 mb-4">
+          {[
+            { href: 'documents', Icon: FolderOpen, titulo: 'Documentos', pie: 'Reservas, vouchers y billetes' },
+            { href: 'prepare',   Icon: Sparkles,   titulo: 'Preparar',   pie: 'Listas de equipaje y recados' },
+          ].map(({ href, Icon, titulo, pie }) => (
+            <Link key={href} href={`/trips/${id}/${href}`}
+              className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors">
+              <span className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                <Icon size={17} strokeWidth={1.8} className="text-slate-500" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium text-slate-800">{titulo}</span>
+                <span className="block text-xs text-slate-500">{pie}</span>
+              </span>
+              <ChevronRight size={16} strokeWidth={2} className="text-slate-300 flex-shrink-0" />
+            </Link>
+          ))}
+        </div>
+
+        <CompartirViaje tripId={params.id} />
 
         {/* Danger zone */}
         <div className="mt-8 card p-6 border-red-200 bg-red-50">
