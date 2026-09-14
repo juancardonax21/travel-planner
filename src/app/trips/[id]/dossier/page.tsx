@@ -64,6 +64,7 @@ export default function DossierPage({ params }: { params: { id: string } }) {
   // Vouchers
   const vouchers: any[] = [
     ...events.filter(e => e.ticket_url).map(e => ({ name: e.title, url: e.ticket_url, date: e.day, type: 'Billete' })),
+    ...events.filter(e => e.confirmation_url).map(e => ({ name: `Confirmación — ${e.title}`, url: e.confirmation_url, date: e.day, type: 'Confirmación' })),
     ...events.filter(e => e.insurance_url).map(e => ({ name: `Seguro — ${e.title}`, url: e.insurance_url, date: e.day, type: 'Seguro' })),
     ...events.filter(e => e.category === 'hotel' && e.accom_web).map(e => ({ name: e.title, url: e.accom_web, date: e.accom_checkin_date, type: 'Alojamiento' })),
     ...docs.filter(d => d.url).map(d => ({ name: d.name, url: d.url, date: null, type: d.category })),

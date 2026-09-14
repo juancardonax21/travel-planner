@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves } from 'lucide-react'
+import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves, TrainFront, FileCheck2 } from 'lucide-react'
 import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
@@ -57,7 +57,7 @@ const EMPTY: any = {
   event_date: '',
   location: '', lat: null, lng: null, note: '', cost: 0, currency: '', paid: false,
   travel_mode: 'driving',
-  ticket_url: '', insurance_url: '',
+  ticket_url: '', confirmation_url: '', insurance_url: '',
   num_stops: 0,
   flight_segments: [EMPTY_SEG()],
   // Accommodation fields
@@ -511,7 +511,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       title: e.title, category: e.category, time: e.time || '09:00',
       event_date: e.day || '',
       location: e.location || '', travel_mode: e.travel_mode || 'driving', note: e.note || '', cost: e.cost || 0,
-      ticket_url: e.ticket_url || '', insurance_url: e.insurance_url || '',
+      ticket_url: e.ticket_url || '', confirmation_url: e.confirmation_url || '', insurance_url: e.insurance_url || '',
       currency: e.currency || '',
       paid: e.paid || false,
       num_stops: numStopsFromSegs,
@@ -557,7 +557,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     }
     
     const firstSeg = segments[0]
-    const flightTime = isFlight ? (firstSeg?.dep_time || form.time) : form.time
+    const flightTime = (isFlight ? (firstSeg?.dep_time || form.time) : form.time) || '09:00'
     const payload: any = {
       trip_id: id, day: (isAccom && form.accom_checkin_date) ? form.accom_checkin_date : (form.event_date || selDay), time: flightTime,
       title: form.title, category: form.category, travel_mode: form.travel_mode || 'driving',
@@ -565,6 +565,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       cost: Number(form.cost) || 0,
       end_time: isFlight ? (segments[segments.length - 1]?.arr_time || null) : (form.end_time || null),
       ticket_url: form.ticket_url || null,
+      confirmation_url: form.confirmation_url || null,
       insurance_url: form.insurance_url || null,
       currency: form.currency || null,
       paid: form.paid || false,
@@ -635,6 +636,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const dayW = selDay ? weather[selDay] : null
   const eventsWithCoords = dayEvents.filter(e => e.lat && e.lng)
   const isFlight = form.category === 'transport' && form.travel_mode === 'flight'
+  const isGroundTransport = form.category === 'transport' && form.travel_mode !== 'flight'
   const isAccom = form.category === 'hotel'
 
   return (
@@ -866,6 +868,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       <label className="label">Tipo de transporte</label>
                       <select className="input" value={form.travel_mode || 'driving'} onChange={e => upd('travel_mode', e.target.value)}>
                         <option value="driving">Coche</option>
+                        <option value="train">Tren</option>
                         <option value="walking">A pie</option>
                         <option value="bicycling">Bicicleta</option>
                         <option value="transit">Transporte público</option>
@@ -910,6 +913,16 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                   {/* FORMULARIO COCHE/TRANSPORTE (NO vuelo, NO alojamiento) */}
                   {!isFlight && !isAccom && (
                     <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="label">{isGroundTransport ? 'Hora de salida' : 'Hora de inicio'}</label>
+                          <input className="input" type="time" value={form.time || ''} onChange={e => upd('time', e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="label">{isGroundTransport ? 'Hora de llegada' : 'Hora de fin'}</label>
+                          <input className="input" type="time" value={form.end_time || ''} onChange={e => upd('end_time', e.target.value)} />
+                        </div>
+                      </div>
                       <div>
                         <label className="label">Lugar</label>
                         <LocationPicker 
@@ -1102,10 +1115,17 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                     </div>
                   </div>
                   {!isAccom && (
+                  <>
                   <div>
                     <label className="label flex items-center gap-1"><Ticket size={11} strokeWidth={1.8} /> Billetes / voucher</label>
                     <input className="input" type="url" value={form.ticket_url} onChange={e => upd('ticket_url', e.target.value)} placeholder="https://drive.google.com/..." />
                   </div>
+                  <div>
+                    <label className="label flex items-center gap-1"><FileCheck2 size={11} strokeWidth={1.8} /> Confirmación de compra</label>
+                    <input className="input" type="url" value={form.confirmation_url} onChange={e => upd('confirmation_url', e.target.value)} placeholder="https://drive.google.com/..." />
+                    <p className="text-xs text-slate-400 mt-1">Resguardo de la reserva cuando los billetes aún no están emitidos.</p>
+                  </div>
+                  </>
                   )}
                   <div>
                     <label className="label flex items-center gap-1"><Shield size={11} strokeWidth={1.8} /> Seguro de viaje</label>
@@ -1142,6 +1162,9 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                     <div className="flex gap-3 p-4 pb-3">
                       <div className="flex flex-col items-center pt-0.5 min-w-[44px]">
                         <span className="text-xs font-mono text-slate-400">{ev.time?.slice(0,5)}</span>
+                        {ev.category !== 'hotel' && e.end_time && e.end_time.slice(0,5) !== ev.time?.slice(0,5) && (
+                          <span className="text-[10px] font-mono text-slate-300">↓ {e.end_time.slice(0,5)}</span>
+                        )}
                         <div className="mt-1.5 w-9 h-9 rounded-xl flex items-center justify-center"
                           style={{background: cfg.bg}}>
                           {(() => { 
@@ -1152,6 +1175,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                               else if (ev.travel_mode === 'driving') Icon = Car
                               else if (ev.travel_mode === 'walking') Icon = Footprints
                               else if (ev.travel_mode === 'bicycling') Icon = Bike
+                              else if (ev.travel_mode === 'train') Icon = TrainFront
                               else if (ev.travel_mode === 'transit') Icon = Bus
                               else if (ev.travel_mode === 'boat') Icon = Waves
                             } else {
@@ -1273,7 +1297,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                     </div>
 
                     {/* Footer strip: cost + links + cancel warning */}
-                    {(ev.cost > 0 || e.ticket_url || e.insurance_url || e.url || e.accom_web || e.accom_cancel_date) && (
+                    {(ev.cost > 0 || e.ticket_url || e.confirmation_url || e.insurance_url || e.url || e.accom_web || e.accom_cancel_date) && (
                       <div className="border-t border-slate-100 bg-slate-50">
 
                         {/* Actions row */}
@@ -1294,6 +1318,12 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                             <a href={e.ticket_url} target="_blank" rel="noopener"
                               className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl hover:bg-emerald-100 transition-colors font-medium">
                               <Ticket size={12} strokeWidth={2} /> Billetes
+                            </a>
+                          )}
+                          {e.confirmation_url && (
+                            <a href={e.confirmation_url} target="_blank" rel="noopener"
+                              className="flex items-center gap-1.5 text-xs text-sky-700 bg-sky-50 border border-sky-200 px-3 py-1.5 rounded-xl hover:bg-sky-100 transition-colors font-medium">
+                              <FileCheck2 size={12} strokeWidth={2} /> Confirmación
                             </a>
                           )}
                           {e.accom_web && (

@@ -12,6 +12,7 @@ export type Trip = {
   travelers?: Traveler[]
 }
 export type EventCategory = 'flight'|'hotel'|'activity'|'meal'|'transport'|'other'
+export type TravelMode = 'driving'|'train'|'walking'|'bicycling'|'transit'|'flight'|'boat'
 export type Event = {
   id: string; trip_id: string; day: string; time: string; title: string
   category: EventCategory; location?: string; lat?: number; lng?: number
@@ -19,6 +20,8 @@ export type Event = {
   airline?: string; flight_number?: string; from_airport?: string
   to_airport?: string; dep_time?: string; arr_time?: string
   arr_day?: string; terminal?: string; created_at: string
+  travel_mode?: TravelMode; end_time?: string
+  ticket_url?: string; confirmation_url?: string; insurance_url?: string
 }
 export type BudgetCategory = 'flights'|'hotels'|'transport'|'activities'|'meals'|'other'
 export type BudgetItem = {
