@@ -2,7 +2,8 @@
 import type { Trip, Event } from '@/types'
 import { formatDate } from '@/lib/utils'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
-import { MapPin, BedDouble, Footprints, Plane, TrainFront, Sparkles } from 'lucide-react'
+import { MapPin, BedDouble, Footprints, Plane, TrainFront, Sparkles, PlayCircle } from 'lucide-react'
+import { tituloSinPlan } from '@/lib/planes'
 
 /* Plan general: el viaje leído de un vistazo.
  *
@@ -20,6 +21,9 @@ import { MapPin, BedDouble, Footprints, Plane, TrainFront, Sparkles } from 'luci
  *
  * Aquí no se habla de dinero. El viaje se lee por lo que se hace; lo que
  * cuesta se mira entero en la pestaña de presupuesto.
+ *
+ * Y cada etapa abre con las miniaturas de sus vídeos, que es la forma más
+ * corta de contestar a "¿y esto cómo es?".
  */
 
 /** Ciudad a partir de la dirección geocodificada.
@@ -70,9 +74,9 @@ function respaldo(evs: Event[]): string {
 
 type Tramo = { ciudad: string; hotel?: Event; dias: string[]; eventos: Event[] }
 
-export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {}, onRelato }:
+export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {} }:
   { trip: Trip; events: Event[]; days: string[]; onDayClick: (d: string) => void
-    anclas?: Record<string, string>; onRelato?: (t: string) => void }) {
+    anclas?: Record<string, string> }) {
 
   // Un tramo dura lo que dura un alojamiento. Los días sin hotel —los de
   // vuelo— quedan aparte, que son tránsito y no estancia.
@@ -90,22 +94,8 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
     }
   })
 
-  const relato = (trip as any).relato as string | undefined
-
   return (
     <div className="mb-4">
-      {/* Por qué este viaje es este y no otro. Las anclas cuentan cada día;
-          esto cuenta el conjunto, que no se deduce de una lista de eventos. */}
-      {onRelato && (
-        <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4">
-          <textarea
-            className="w-full bg-transparent resize-none focus:outline-none text-[15px] leading-relaxed text-slate-700 min-h-[96px]"
-            placeholder="¿Qué es este viaje? Las etapas, y lo que lo sostiene."
-            defaultValue={relato || ''}
-            key={'relato-' + trip.id}
-            onBlur={e => { if (e.target.value !== (relato || '')) onRelato(e.target.value) }} />
-        </div>
-      )}
       {tramos.map((tr, i) => {
         const hotel = tr.hotel
 
@@ -134,6 +124,35 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
                   <BedDouble size={12} strokeWidth={1.8} /> {hotel.title}
                 </p>
               )}
+
+              {/* Las miniaturas van antes que la lista de días: se ve la etapa
+                  antes de leerla. La imagen la sirve YouTube a partir del id. */}
+              {(() => {
+                const conVideo = tr.eventos.filter(e => (e as any).video_id)
+                if (!conVideo.length) return null
+                return (
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 -mx-1 px-1 pb-1">
+                    {conVideo.map(e => {
+                      const vid = (e as any).video_id as string
+                      return (
+                        <a key={e.id} href={`https://www.youtube.com/watch?v=${vid}`}
+                          target="_blank" rel="noreferrer"
+                          className="group relative flex-shrink-0 w-44 rounded-xl overflow-hidden bg-slate-900 shadow-sm hover:shadow-lg transition-shadow">
+                          <img src={`https://i.ytimg.com/vi/${vid}/mqdefault.jpg`} alt=""
+                            loading="lazy"
+                            className="w-full aspect-video object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                          <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
+                          <PlayCircle size={30} strokeWidth={1.6}
+                            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/85 group-hover:text-white group-hover:scale-110 transition-all" />
+                          <span className="absolute bottom-1.5 left-2 right-2 text-[11px] font-medium text-white truncate">
+                            {tituloSinPlan(e)}
+                          </span>
+                        </a>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
 
               <div className="mt-3 space-y-2">
                 {tr.dias.map(day => {

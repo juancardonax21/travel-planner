@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves, TrainFront, FileCheck2, Banknote, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves, TrainFront, FileCheck2, Banknote, ChevronRight, PlayCircle } from 'lucide-react'
 import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
@@ -1125,11 +1125,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
         {/* Trip Route */}
         {viewMode === 'route' && (
           <PlanGeneral trip={trip} events={events} days={days} anclas={anclas}
-            onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }}
-            onRelato={async relato => {
-              setTrip(t => (t ? { ...t, relato } as any : t))
-              await supabase.from('trips').update({ relato }).eq('id', id)
-            }} />
+            onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }} />
         )}
 
         {/* Week view */}
@@ -1170,6 +1166,20 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                         <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 text-xs font-medium">
                           <Users size={12} strokeWidth={2} /> {planDe(detalle)}
                         </span>
+                      )}
+                      {/* Ver el sitio antes de ir: la miniatura la sirve YouTube
+                          a partir del id, y al pinchar se abre el vídeo. */}
+                      {e.video_id && (
+                        <a href={`https://www.youtube.com/watch?v=${e.video_id}`}
+                          target="_blank" rel="noreferrer"
+                          className="group relative block mt-3 rounded-xl overflow-hidden bg-slate-900 shadow-sm hover:shadow-lg transition-shadow">
+                          <img src={`https://i.ytimg.com/vi/${e.video_id}/mqdefault.jpg`} alt=""
+                            className="w-full aspect-video object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                          <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                          <PlayCircle size={40} strokeWidth={1.5}
+                            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/90 group-hover:scale-110 transition-transform" />
+                          <span className="absolute bottom-2 left-3 text-xs font-medium text-white">Ver cómo es</span>
+                        </a>
                       )}
                     </div>
                     <button onClick={() => setDetalle(null)}
