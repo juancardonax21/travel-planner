@@ -53,12 +53,16 @@ create policy "El propietario gestiona invitaciones" on public.trip_invitations 
 
 -- ── Acceso de los invitados a los datos del viaje ──
 -- Una función evita repetir la subconsulta y que se olvide en alguna tabla.
+-- security definer para que no se muerda la cola: la política de trips
+-- consulta trip_access y la de trip_access consulta trips. Al saltarse RLS
+-- dentro de la función, se rompe esa recursión.
+-- El search_path fijo evita que nadie pueda colar otro esquema por delante.
 create or replace function public.tiene_acceso(t uuid) returns boolean as $$
   select exists (
     select 1 from public.trip_access
      where trip_id = t and user_id = auth.uid()
   );
-$$ language sql security definer stable;
+$$ language sql security definer stable set search_path = public, pg_temp;
 
 -- El viaje en sí: los invitados lo leen, pero no lo modifican ni lo borran.
 drop policy if exists "Invitados leen el viaje" on public.trips;
