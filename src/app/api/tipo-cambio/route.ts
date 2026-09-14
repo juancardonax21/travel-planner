@@ -12,6 +12,10 @@ import { NextResponse } from 'next/server'
  *
  * Los datos salen de Frankfurter, que publica las referencias diarias del
  * Banco Central Europeo. Es gratis y no pide clave.
+ *
+ * Se llama a api.frankfurter.dev directamente: el viejo api.frankfurter.app
+ * responde con un 301 hacia aquí, y esa redirección devuelve 403 según qué
+ * cliente la siga.
  */
 
 export const dynamic = 'force-dynamic'
@@ -41,7 +45,7 @@ async function actualizar() {
   // Array.from y no for..of directo sobre el Map: el target de TypeScript
   // de este proyecto no permite recorrer iteradores sin downlevelIteration.
   for (const [clave, { from, to }] of Array.from(pares.entries())) {
-    const r = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`, { cache: 'no-store' })
+    const r = await fetch(`https://api.frankfurter.dev/v1/latest?from=${from}&to=${to}`, { cache: 'no-store' })
     if (!r.ok) continue
     const j = await r.json()
     const tasa = j?.rates?.[to]
