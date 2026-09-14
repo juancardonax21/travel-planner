@@ -1,9 +1,10 @@
 'use client'
 import type { Trip, Event } from '@/types'
 import { formatCurrency } from '@/lib/utils'
+
 import {
   Plane, BedDouble, Compass, UtensilsCrossed, Car, Tag, Bike, Bus, Footprints,
-  Waves, TrainFront, CheckCircle2, Banknote, LucideIcon,
+  Waves, TrainFront, CheckCircle2, Banknote, AlertTriangle, LucideIcon,
 } from 'lucide-react'
 
 /* Rejilla de planning: columnas = días, filas = tramos de 30 min.
@@ -13,7 +14,7 @@ import {
 const SLOT_MIN = 30
 const SLOT_H = 34          // alto de media hora
 const RAIL_W = 56          // columna de horas
-const DAY_W = 190          // ancho mínimo de cada día
+const DAY_W = 215          // ancho mínimo de cada día
 const HEAD_H = 66          // alto de la cabecera de días, para fijar la franja de hotel
 
 // Color por categoría, tomado de la paleta de la app.
@@ -21,7 +22,7 @@ type Paleta = { bg: string; line: string; ink: string }
 const CAT_COLOR: Record<string, Paleta> = {
   transport: { bg: '#DBEAFE', line: '#60A5FA', ink: '#1D4ED8' },
   hotel:     { bg: '#D1FAE5', line: '#6EE7B7', ink: '#047857' },
-  activity:  { bg: '#F5F3FF', line: '#DDD6FE', ink: '#6D28D9' },
+  activity:  { bg: '#FFFFFF', line: '#DDD6FE', ink: '#6D28D9' },
   meal:      { bg: '#FEF3C7', line: '#FCD34D', ink: '#B45309' },
   other:     { bg: '#F1F5F9', line: '#CBD5E1', ink: '#475569' },
 }
@@ -48,6 +49,9 @@ function eventIcon(ev: Event): LucideIcon {
   if (ev.category === 'transport') return MODE_ICON[(ev as any).travel_mode] || Car
   return CAT_ICON[ev.category] || Tag
 }
+
+const minsToHHMM = (m: number) =>
+  `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 
 function timeToMins(t?: string | null): number {
   if (!t) return 0
@@ -83,10 +87,6 @@ function noteLines(note?: string | null): string[] {
   return note.split(' · ').map(s => s.trim()).filter(Boolean)
 }
 const isWarn = (line: string) => line.startsWith('⚠')
-// El desglose del coste ya se ve en la etiqueta del importe: en la rejilla
-// sobra como texto. Sigue estando en la ficha al abrir el evento.
-const esMeta = (line: string) => line.startsWith('Coste ') || line.startsWith('Pago: ')
-const MAX_NOTAS = 2        // líneas informativas; los avisos no se recortan
 
 /** Ciudades del día, sacadas de las ubicaciones ya geocodificadas. */
 function dayPlaces(evs: Event[]): string {
@@ -100,6 +100,39 @@ function dayPlaces(evs: Event[]): string {
     if (city && city.length <= 18 && !seen.includes(city)) seen.push(city)
   }
   return seen.slice(0, 2).join(' · ')
+}
+
+type Trozo = { ev: Event; start: number; end: number; sigue: boolean; viene: boolean }
+
+/** Trozos que le tocan a un día: los que empiezan en él y la cola de los que
+ *  vienen de días anteriores. */
+function trozosDelDia(events: Event[], day: string, minDia: number, maxDia: number): Trozo[] {
+  const out: Trozo[] = []
+  for (const ev of events) {
+    if (ev.category === 'hotel') continue
+    const dias = Math.round((Date.parse(day + 'T00:00:00') - Date.parse(ev.day + 'T00:00:00')) / 86400000)
+    if (dias < 0) continue
+    const { start, end } = eventRange(ev)
+    const desfase = dias * 24 * 60
+    const a = Math.max(start - desfase, minDia)
+    const b = Math.min(end - desfase, maxDia)
+    if (b <= a) continue
+    out.push({ ev, start: a, end: b, sigue: end - desfase > maxDia, viene: dias > 0 })
+  }
+  return out.sort((x, y) => x.start - y.start || y.end - x.end)
+}
+
+/** Check-in y check-out, como hitos que cruzan la columna. */
+function hitosDelDia(hoteles: Event[], day: string) {
+  const out: { t: number; texto: string; ev: Event }[] = []
+  for (const h of hoteles) {
+    const e = h as any
+    if (e.accom_checkin_date === day && e.accom_checkin_time)
+      out.push({ t: timeToMins(e.accom_checkin_time), texto: 'Check-in · ' + h.title, ev: h })
+    if (e.accom_checkout_date === day && e.accom_checkout_time)
+      out.push({ t: timeToMins(e.accom_checkout_time), texto: 'Check-out · ' + h.title, ev: h })
+  }
+  return out
 }
 
 /** Reparte en carriles los bloques que se solapan.
@@ -237,10 +270,9 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
 
             {/* columnas de día */}
             {days.map(day => {
-              const dayEvents = events.filter(e => e.day === day && e.category !== 'hotel')
-                .map(ev => ({ ev, ...eventRange(ev) }))
-                .sort((a, b) => a.start - b.start || b.end - a.end)
+              const dayEvents = trozosDelDia(events, day, originMin, endH * 60)
               const { lane, total } = assignLanes(dayEvents)
+              const hitos = hitosDelDia(hoteles, day)
 
               return (
                 <div key={day} style={{ width: DAY_W, borderLeft: `1px solid ${C.rule}` }}
@@ -254,17 +286,24 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                   <button className="absolute inset-0 w-full z-0 hover:bg-blue-50/30 transition-colors"
                     onClick={() => onDayClick(day)} aria-label={`Ver ${day}`} />
 
-                  {dayEvents.map(({ ev, start, end }, i) => {
-                    const top = yOf(Math.max(start, originMin))
-                    const height = Math.max(yOf(Math.min(end, endH * 60)) - top, 22)
-                    if (start >= endH * 60) return null
+                  {/* Hitos de alojamiento: cruzan la columna sin ocupar carril */}
+                  {hitos.map((h, k) => (
+                    <button key={k} onClick={e => { e.stopPropagation(); onEventClick ? onEventClick(h.ev) : onDayClick(day) }}
+                      style={{ top: yOf(h.t) - 1, borderTop: `2px dashed ${CAT_COLOR.hotel.ink}` }}
+                      className="absolute left-0 right-0 z-[5] flex items-center group/h">
+                      <span className="px-1.5 rounded-br font-mono truncate"
+                        style={{ fontSize: 9, background: CAT_COLOR.hotel.ink, color: '#fff', maxWidth: '100%' }}>
+                        {h.texto}
+                      </span>
+                    </button>
+                  ))}
+
+                  {dayEvents.map(({ ev, start, end, sigue, viene }, i) => {
+                    const top = yOf(start)
+                    const height = Math.max(yOf(end) - top, 22)
 
                     const e = ev as any
-                    const todas = noteLines(e.note)
-                    const avisos = todas.filter(isWarn)
-                    const sueltas = todas.filter(l => !isWarn(l) && !esMeta(l))
-                    const recortadas = sueltas.length > MAX_NOTAS
-                    const lines = [...avisos, ...sueltas.slice(0, MAX_NOTAS)]
+                    const avisos = noteLines(e.note).filter(isWarn)
                     const fijo = Boolean(e.fixed_time)
                     const contratado = Boolean(e.ticket_url || e.confirmation_url || e.paid)
                     const enEfectivo = e.payment_method === 'efectivo'
@@ -272,10 +311,9 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                     const esTraslado = ev.category === 'transport'
                     const Icon = eventIcon(ev)
                     const w = 100 / total[i]
-                    const overnight = end > endH * 60
 
                     return (
-                      <button key={ev.id}
+                      <button key={ev.id + (viene ? '-cont' : '')}
                         onClick={evt => {
                           evt.stopPropagation()
                           if (onEventClick) onEventClick(ev)
@@ -295,13 +333,17 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                         <span className="flex items-center gap-1 font-mono" style={{ fontSize: 9.5, letterSpacing: '.04em', color: pal.ink }}>
                           <Icon size={10} strokeWidth={2} className="flex-shrink-0 opacity-80" />
                           <span className="opacity-75">
-                            {ev.time?.slice(0, 5)}
-                            {e.end_time ? `–${e.end_time.slice(0, 5)}` : ''}
-                            {overnight ? ' →' : ''}
+                            {viene && sigue ? 'todo el día'
+                              : viene ? `← llega ${minsToHHMM(end)}`
+                              : sigue ? `${minsToHHMM(start)} →`
+                              : `${minsToHHMM(start)}–${minsToHHMM(end)}`}
                           </span>
                           {contratado && <CheckCircle2 size={10} strokeWidth={2.4} className="flex-shrink-0" />}
                           {enEfectivo && <Banknote size={11} strokeWidth={2.2} className="flex-shrink-0" style={{ color: C.shu }} />}
-                          {ev.cost > 0 && (
+                          {avisos.length > 0 && height <= 4 * SLOT_H && (
+                            <AlertTriangle size={10} strokeWidth={2.4} className="flex-shrink-0" style={{ color: C.shu }} />
+                          )}
+                          {ev.cost > 0 && !viene && (
                             <span className="ml-auto flex-shrink-0 font-semibold opacity-90">
                               {formatCurrency(ev.cost, e.currency || trip.currency)}
                             </span>
@@ -313,14 +355,11 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                         }}>
                           {ev.title}
                         </span>
-                        {height > 60 && lines.map((l, k) => (
-                          <span key={k} className="block leading-snug mt-1"
-                            style={{ fontSize: 10.5, color: isWarn(l) ? C.shu : C.muted, fontWeight: isWarn(l) ? 500 : 400 }}>
-                            {l}
+                        {avisos.length > 0 && height > 4 * SLOT_H && (
+                          <span className="block leading-snug mt-1"
+                            style={{ fontSize: 10.5, color: C.shu, fontWeight: 500 }}>
+                            {avisos[0]}
                           </span>
-                        ))}
-                        {recortadas && height > 60 && (
-                          <span className="block leading-none mt-1" style={{ fontSize: 10.8, color: C.faint }}>…</span>
                         )}
                       </button>
                     )

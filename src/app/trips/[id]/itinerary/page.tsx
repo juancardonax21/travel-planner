@@ -398,6 +398,8 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editEvent, setEditEvent] = useState<Event | null>(null)
+  // Pulsar un bloque abre la ficha en lectura; editar es un paso aparte.
+  const [detalle, setDetalle] = useState<Event | null>(null)
   const [form, setForm] = useState<any>({ ...EMPTY })
   const [segments, setSegments] = useState<Segment[]>([EMPTY_SEG()])
   const [saving, setSaving] = useState(false)
@@ -1056,10 +1058,96 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
             <WeekView
               trip={trip} events={events} days={days}
               onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }}
-              onEventClick={ev => { setSelDay(ev.day); openEdit(ev) }}
+              onEventClick={ev => { setSelDay(ev.day); setDetalle(ev) }}
             />
           </div>
         )}
+
+        {/* Detalle en lectura: todo lo del evento, y de ahí a editar */}
+        {detalle && !showForm && (() => {
+          const e = detalle as any
+          const cfg = CAT_CONFIG[detalle.category as keyof typeof CAT_CONFIG] || CAT_CONFIG.other
+          const lineas = (e.note || '').split(' · ').map((x: string) => x.trim()).filter(Boolean)
+          const pago: Record<string, string> = { prepago: 'Prepago', tarjeta: 'Tarjeta', efectivo: 'Solo efectivo' }
+          return (
+            <div className="fixed inset-0 z-50 bg-slate-900/50 overflow-y-auto"
+              onClick={() => setDetalle(null)}>
+              <div className="max-w-lg mx-auto px-4 py-10" onClick={ev => ev.stopPropagation()}>
+                <div className="card p-5 shadow-xl">
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="min-w-0">
+                      <div className="font-mono text-xs text-slate-400 mb-1">
+                        {formatDate(detalle.day, 'EEEE')} · {detalle.time?.slice(0,5)}
+                        {e.end_time ? `–${e.end_time.slice(0,5)}` : ''}
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 leading-tight">{detalle.title}</h3>
+                    </div>
+                    <button onClick={() => setDetalle(null)}
+                      className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <span className="badge" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
+                    {e.fixed_time && (
+                      <span className="badge bg-red-50 text-red-700 border border-red-200">
+                        <AlertTriangle size={10} strokeWidth={2} /> No admite cambio
+                      </span>
+                    )}
+                    {e.payment_method && (
+                      <span className={`badge border ${e.payment_method === 'efectivo'
+                        ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                        {e.payment_method === 'efectivo' ? <Banknote size={10} strokeWidth={2} /> : <CreditCard size={10} strokeWidth={2} />}
+                        {pago[e.payment_method]}
+                      </span>
+                    )}
+                    {detalle.cost > 0 && (
+                      <span className="badge bg-slate-100 text-slate-700 font-mono">
+                        {formatCurrency(detalle.cost, e.currency || trip.currency)}
+                      </span>
+                    )}
+                  </div>
+
+                  {detalle.location && (
+                    <a href={`https://maps.google.com/?q=${encodeURIComponent(detalle.location)}`}
+                      target="_blank" rel="noopener"
+                      className="flex items-start gap-1.5 text-sm text-slate-500 hover:text-blue-600 mb-3">
+                      <MapPin size={13} strokeWidth={1.8} className="flex-shrink-0 mt-0.5" />
+                      <span>{detalle.location} <span className="text-blue-400">→ Maps</span></span>
+                    </a>
+                  )}
+
+                  {lineas.length > 0 && (
+                    <div className="space-y-1.5 mb-4">
+                      {lineas.map((l: string, k: number) => (
+                        <p key={k} className={`text-sm leading-snug ${
+                          l.startsWith('⚠') ? 'text-red-600 font-medium' : 'text-slate-600'}`}>{l}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {e.ticket_url && <a href={e.ticket_url} target="_blank" rel="noopener"
+                      className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl"><Ticket size={12} /> Billetes</a>}
+                    {e.confirmation_url && <a href={e.confirmation_url} target="_blank" rel="noopener"
+                      className="flex items-center gap-1.5 text-xs text-sky-700 bg-sky-50 border border-sky-200 px-3 py-1.5 rounded-xl"><FileCheck2 size={12} /> Confirmación</a>}
+                    {e.url && <a href={e.url} target="_blank" rel="noopener"
+                      className="flex items-center gap-1.5 text-xs text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl"><Globe size={12} /> {safeHost(e.url)}</a>}
+                    {e.insurance_url && <a href={e.insurance_url} target="_blank" rel="noopener"
+                      className="flex items-center gap-1.5 text-xs text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1.5 rounded-xl"><Shield size={12} /> Seguro</a>}
+                  </div>
+
+                  <div className="flex gap-2 pt-3 border-t border-slate-100">
+                    <button onClick={() => { const ev = detalle; setDetalle(null); openEdit(ev) }}
+                      className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-1.5">
+                      <Pencil size={14} /> Editar
+                    </button>
+                    <button onClick={() => setDetalle(null)} className="btn-secondary px-4">Cerrar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Ficha del evento sobre la rejilla, sin salir de ella */}
         {viewMode === 'week' && showForm && (
