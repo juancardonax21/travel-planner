@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import OfflineReady from '@/components/layout/OfflineReady'
-import BloqueoBiometrico from '@/components/layout/BloqueoBiometrico'
 
 export const metadata: Metadata = {
   title: 'Travel Planner',
@@ -34,7 +33,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es">
       <body className="min-h-screen bg-slate-50">
         {children}
-        <BloqueoBiometrico />
         <OfflineReady />
       </body>
     </html>

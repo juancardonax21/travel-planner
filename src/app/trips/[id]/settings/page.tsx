@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Camera, ImageIcon, X, Trash2, Fingerprint } from 'lucide-react'
-import BloqueoAjuste from '@/components/layout/BloqueoAjuste'
+import { Camera, ImageIcon, X, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { Trip } from '@/types'
@@ -98,9 +97,6 @@ export default function TripSettingsPage({ params }: { params: { id: string } })
     <div className="min-h-screen bg-slate-50">
       <TripNav trip={{ ...trip, ...form } as Trip} active="settings" />
       <div className="max-w-2xl mx-auto px-4 pb-12">
-
-        {/* Bloqueo con Face ID */}
-        <BloqueoAjuste />
 
         {/* Cover photo */}
         <div className="card p-6 mb-4">
