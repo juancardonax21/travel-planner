@@ -8,7 +8,7 @@ import { formatDate, CAT_CONFIG, formatCurrency } from '@/lib/utils'
 import { fetchWeather, weatherEmoji, type WeatherDay } from '@/lib/weather'
 import TripNav from '@/components/layout/TripNav'
 import dynamic from 'next/dynamic'
-import WeekView from '@/components/itinerary/WeekView'
+import WeekView, { MODE_LABEL } from '@/components/itinerary/WeekView'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import TripRoute from '@/components/itinerary/TripRoute'
 import LocationPicker from '@/components/itinerary/LocationPicker'
@@ -713,12 +713,14 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
           <div>
             <label className="label">Tipo de transporte</label>
             <select className="input" value={form.travel_mode || 'driving'} onChange={e => upd('travel_mode', e.target.value)}>
-              <option value="driving">Coche</option>
+              <option value="flight">Avión</option>
+              <option value="shinkansen">Tren de alta velocidad</option>
               <option value="train">Tren</option>
+              <option value="metro">Metro</option>
+              <option value="bus">Autobús</option>
               <option value="walking">A pie</option>
+              <option value="driving">Coche o taxi</option>
               <option value="bicycling">Bicicleta</option>
-              <option value="transit">Transporte público</option>
-              <option value="flight">Vuelo</option>
               <option value="boat">Barco</option>
             </select>
           </div>
@@ -1091,6 +1093,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                     {e.fixed_time && (
                       <span className="badge bg-red-50 text-red-700 border border-red-200">
                         <AlertTriangle size={10} strokeWidth={2} /> No admite cambio
+                      </span>
+                    )}
+                    {detalle.category === 'transport' && e.travel_mode && MODE_LABEL[e.travel_mode] && (
+                      <span className="badge bg-blue-50 text-blue-700 border border-blue-200">
+                        {MODE_LABEL[e.travel_mode]}
                       </span>
                     )}
                     {e.payment_method && (

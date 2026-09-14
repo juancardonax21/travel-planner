@@ -12,7 +12,7 @@ export type Trip = {
   travelers?: Traveler[]
 }
 export type EventCategory = 'flight'|'hotel'|'activity'|'meal'|'transport'|'other'
-export type TravelMode = 'driving'|'train'|'walking'|'bicycling'|'transit'|'flight'|'boat'
+export type TravelMode = 'flight'|'shinkansen'|'train'|'metro'|'bus'|'walking'|'driving'|'bicycling'|'boat'|'transit'
 export type Event = {
   id: string; trip_id: string; day: string; time: string; title: string
   category: EventCategory; location?: string; lat?: number; lng?: number

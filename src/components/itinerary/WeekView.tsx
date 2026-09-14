@@ -4,7 +4,7 @@ import { formatCurrency } from '@/lib/utils'
 
 import {
   Plane, BedDouble, Compass, UtensilsCrossed, Car, Tag, Bike, Bus, Footprints,
-  Waves, TrainFront, CheckCircle2, Banknote, AlertTriangle, LucideIcon,
+  TrainFront, TrainFrontTunnel, Train, Ship, CheckCircle2, Banknote, AlertTriangle, LucideIcon,
 } from 'lucide-react'
 
 /* Rejilla de planning: columnas = días, filas = tramos de 30 min.
@@ -37,9 +37,17 @@ const CAT_LABEL: Record<string, string> = {
   meal: 'Comida', other: 'Descanso',
 }
 
+// Un icono por medio de transporte. El morro del TrainFront es el shinkansen;
+// el tren en túnel, el metro; el de vagones, el cercanías.
 const MODE_ICON: Record<string, LucideIcon> = {
-  flight: Plane, train: TrainFront, driving: Car, transit: Bus,
-  walking: Footprints, bicycling: Bike, boat: Waves,
+  flight: Plane, shinkansen: TrainFront, train: Train, metro: TrainFrontTunnel,
+  bus: Bus, walking: Footprints, driving: Car, bicycling: Bike, boat: Ship,
+  transit: Bus,
+}
+export const MODE_LABEL: Record<string, string> = {
+  flight: 'Avión', shinkansen: 'Tren de alta velocidad', train: 'Tren',
+  metro: 'Metro', bus: 'Autobús', walking: 'A pie', driving: 'Coche o taxi',
+  bicycling: 'Bicicleta', boat: 'Barco', transit: 'Transporte público',
 }
 const CAT_ICON: Record<string, LucideIcon> = {
   hotel: BedDouble, activity: Compass, meal: UtensilsCrossed, other: Tag,
@@ -130,21 +138,21 @@ function trozosDelDia(events: Event[], day: string, minDia: number, maxDia: numb
 /** Hitos del día: entradas y salidas de hotel, y los traslados o recados
  *  demasiado breves para dibujarse como bloque. Se apilan si caen juntos. */
 function hitosDelDia(events: Event[], day: string) {
-  const out: { t: number; texto: string; ev: Event; color: string }[] = []
+  const out: { t: number; texto: string; ev: Event; color: string; Icon: LucideIcon }[] = []
   for (const ev of events) {
     const e = ev as any
     if (ev.category === 'hotel') {
       if (e.accom_checkin_date === day && e.accom_checkin_time)
-        out.push({ t: timeToMins(e.accom_checkin_time), texto: 'Check-in · ' + ev.title, ev, color: CAT_COLOR.hotel.ink })
+        out.push({ t: timeToMins(e.accom_checkin_time), texto: 'Check-in · ' + ev.title, ev, color: CAT_COLOR.hotel.ink, Icon: BedDouble })
       if (e.accom_checkout_date === day && e.accom_checkout_time)
-        out.push({ t: timeToMins(e.accom_checkout_time), texto: 'Check-out · ' + ev.title, ev, color: CAT_COLOR.hotel.ink })
+        out.push({ t: timeToMins(e.accom_checkout_time), texto: 'Check-out · ' + ev.title, ev, color: CAT_COLOR.hotel.ink, Icon: BedDouble })
       continue
     }
     if (ev.day !== day) continue
     const { start, end } = eventRange(ev)
     if (!esMomento(ev, end - start)) continue
     out.push({ t: start, texto: `${minsToHHMM(start)} · ${ev.title}`, ev,
-               color: (CAT_COLOR[ev.category] || CAT_COLOR.other).ink })
+               color: (CAT_COLOR[ev.category] || CAT_COLOR.other).ink, Icon: eventIcon(ev) })
   }
   return out.sort((a, b) => a.t - b.t)
 }
@@ -310,9 +318,10 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                         <button key={k} onClick={e => { e.stopPropagation(); onEventClick ? onEventClick(h.ev) : onDayClick(day) }}
                           style={{ top: y - 1, borderTop: `2px dashed ${h.color}` }}
                           className="absolute left-0 right-0 z-20 flex items-center">
-                          <span className="px-1.5 rounded-br font-mono truncate shadow-sm"
+                          <span className="flex items-center gap-1 px-1.5 rounded-br font-mono truncate shadow-sm"
                             style={{ fontSize: 9, background: h.color, color: '#fff', maxWidth: '100%' }}>
-                            {h.texto}
+                            <h.Icon size={9} strokeWidth={2.4} className="flex-shrink-0" />
+                            <span className="truncate">{h.texto}</span>
                           </span>
                         </button>
                       )
