@@ -121,15 +121,24 @@ function dayPlaces(evs: Event[]): string {
 }
 
 const MINUTO_HITO = 30
-const esMomento = (ev: Event, dur: number) =>
-  dur <= MINUTO_HITO && (ev.category === 'transport' || ev.category === 'other')
+// El avión y el tren bala son parte del viaje y ocupan la tarde entera: se
+// dibujan como bloque, con su duración. Los demás traslados -metro, bus,
+// cercanías, a pie- son tránsito, no plan: van como franja fina, aunque duren
+// dos horas. Así la columna enseña lo que se hace, no lo que se tarda.
+const TRASLADO_CON_BLOQUE = ['flight', 'shinkansen']
+const esMomento = (ev: Event, dur: number) => {
+  if (ev.category === 'transport')
+    return !TRASLADO_CON_BLOQUE.includes((ev as any).travel_mode)
+  return ev.category === 'other' && dur <= MINUTO_HITO
+}
 
-type Trozo = { ev: Event; start: number; end: number; sigue: boolean; viene: boolean }
+type Trozo = { ev: Event; start: number; end: number; sigue: boolean; viene: boolean; momento: boolean }
 
 /** Trozos que le tocan a un día: los que empiezan en él y la cola de los que
- *  vienen de días anteriores. */
-function trozosDelDia(events: Event[], day: string, minDia: number, maxDia: number,
-                     colapsaBreves = true): Trozo[] {
+ *  vienen de días anteriores. Marcados con si van de bloque o de franja, pero
+ *  todos en la misma lista: el reparto de carriles los cuenta a todos, para
+ *  que una franja de un plan no invada el carril del otro. */
+function trozosDelDia(events: Event[], day: string, minDia: number, maxDia: number): Trozo[] {
   const out: Trozo[] = []
   for (const ev of events) {
     if (ev.category === 'hotel') continue
@@ -140,30 +149,23 @@ function trozosDelDia(events: Event[], day: string, minDia: number, maxDia: numb
     const a = Math.max(start - desfase, minDia)
     const b = Math.min(end - desfase, maxDia)
     if (b <= a) continue
-    if (colapsaBreves && esMomento(ev, end - start)) continue
-    out.push({ ev, start: a, end: b, sigue: end - desfase > maxDia, viene: dias > 0 })
+    out.push({ ev, start: a, end: b, sigue: end - desfase > maxDia, viene: dias > 0,
+               momento: esMomento(ev, end - start) })
   }
   return out.sort((x, y) => x.start - y.start || y.end - x.end)
 }
 
-/** Hitos del día: entradas y salidas de hotel, y los traslados o recados
- *  demasiado breves para dibujarse como bloque. Se apilan si caen juntos. */
-function hitosDelDia(events: Event[], day: string, soloHotel = false) {
+/** Entradas y salidas de hotel. Cruzan la columna entera porque valen para
+ *  todo el mundo, también los días en que la familia se separa. */
+function hitosDelDia(events: Event[], day: string) {
   const out: { t: number; texto: string; ev: Event; color: string; Icon: LucideIcon }[] = []
   for (const ev of events) {
     const e = ev as any
-    if (ev.category === 'hotel') {
-      if (e.accom_checkin_date === day && e.accom_checkin_time)
-        out.push({ t: timeToMins(e.accom_checkin_time), texto: 'Check-in · ' + ev.title, ev, color: CAT_COLOR.hotel.ink, Icon: BedDouble })
-      if (e.accom_checkout_date === day && e.accom_checkout_time)
-        out.push({ t: timeToMins(e.accom_checkout_time), texto: 'Check-out · ' + ev.title, ev, color: CAT_COLOR.hotel.ink, Icon: BedDouble })
-      continue
-    }
-    if (soloHotel || ev.day !== day) continue
-    const { start, end } = eventRange(ev)
-    if (!esMomento(ev, end - start)) continue
-    out.push({ t: start, texto: `${minsToHHMM(start)} · ${ev.title}`, ev,
-               color: (CAT_COLOR[ev.category] || CAT_COLOR.other).ink, Icon: eventIcon(ev) })
+    if (ev.category !== 'hotel') continue
+    if (e.accom_checkin_date === day && e.accom_checkin_time)
+      out.push({ t: timeToMins(e.accom_checkin_time), texto: 'Check-in · ' + ev.title, ev, color: CAT_COLOR.hotel.ink, Icon: BedDouble })
+    if (e.accom_checkout_date === day && e.accom_checkout_time)
+      out.push({ t: timeToMins(e.accom_checkout_time), texto: 'Check-out · ' + ev.title, ev, color: CAT_COLOR.hotel.ink, Icon: BedDouble })
   }
   return out.sort((a, b) => a.t - b.t)
 }
@@ -195,6 +197,8 @@ function assignLanes(items: { start: number; end: number }[]) {
   cerrar()
   return { lane, total }
 }
+
+type Colocado = Trozo & { lane: number; total: number }
 
 type Props = {
   trip: Trip
@@ -244,15 +248,16 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
      Cuando eso pasa, los tramos cortos tampoco se colapsan en la franja que
      cruza la columna, porque parecería que valen para todos. */
   const porDia = days.map(day => {
-    const todos = trozosDelDia(events, day, originMin, endH * 60, false)
-    const carriles = assignLanes(todos).total.reduce((a, b) => Math.max(a, b), 1)
-    const paralelo = !movil && carriles > 1
-    const dayEvents = paralelo ? todos : trozosDelDia(events, day, originMin, endH * 60)
-    return {
-      day, dayEvents, paralelo,
-      ...assignLanes(dayEvents),
-      ancho: anchoDia * (paralelo ? Math.min(carriles, 2) : 1),
-    }
+    const todos = trozosDelDia(events, day, originMin, endH * 60)
+    const { lane, total } = assignLanes(todos)
+    const bloques: Colocado[] = []
+    const franjas: Colocado[] = []
+    todos.forEach((t, i) => (t.momento ? franjas : bloques)
+      .push({ ...t, lane: lane[i], total: total[i] }))
+    // El ancho lo deciden los bloques, no las franjas: un traslado que roza
+    // el plan siguiente por un minuto no debe ensanchar el día entero.
+    const carriles = bloques.reduce((a, b) => Math.max(a, b.total), 1)
+    return { day, bloques, franjas, ancho: anchoDia * (movil ? 1 : Math.min(carriles, 2)) }
   })
   const anchoDe = new Map(porDia.map(p => [p.day, p.ancho]))
   const anchoTotal = porDia.reduce((s, p) => s + p.ancho, 0)
@@ -350,8 +355,11 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
             </div>
 
             {/* columnas de día */}
-            {porDia.map(({ day, dayEvents, lane, total, paralelo, ancho }) => {
-              const hitos = hitosDelDia(events, day, paralelo)
+            {porDia.map(({ day, bloques, franjas, ancho }) => {
+              const hitos = hitosDelDia(events, day)
+              // Las bandas de hotel cruzan la columna entera: las franjas de
+              // traslado tienen que bajarse si caen encima de una.
+              const bandasHotel: [number, number][] = []
 
               return (
                 <div key={day} style={{ width: ancho, borderLeft: `1px solid ${C.rule}`, scrollSnapAlign: 'start' }}
@@ -371,6 +379,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                     return hitos.map((h, k) => {
                       const y = Math.max(yOf(h.t), ocupadoHasta)
                       ocupadoHasta = y + hitoH
+                      bandasHotel.push([y, y + hitoH])
                       return (
                         <button key={k} onClick={e => { e.stopPropagation(); onEventClick ? onEventClick(h.ev) : onDayClick(day) }}
                           style={{ top: y - 1, height: hitoH, borderTop: `2px dashed ${h.color}` }}
@@ -386,7 +395,43 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                     })
                   })()}
 
-                  {dayEvents.map(({ ev, start, end, sigue, viene }, i) => {
+                  {/* Traslados: franja fina en su carril, no bloque. Se apilan
+                      por carril si dos caen a la misma hora. */}
+                  {(() => {
+                    const ocupado: Record<number, number> = {}
+                    return franjas.map(({ ev, start, lane, total }, k) => {
+                      const w = 100 / total
+                      let y = Math.max(yOf(start), ocupado[lane] ?? -Infinity)
+                      for (const [a, b] of bandasHotel) if (y < b && y + hitoH > a) y = b
+                      ocupado[lane] = y + hitoH
+                      const color = (CAT_COLOR[ev.category] || CAT_COLOR.other).ink
+                      const Icon = eventIcon(ev)
+                      return (
+                        <button key={ev.id + '-franja'}
+                          onClick={e => { e.stopPropagation(); onEventClick ? onEventClick(ev) : onDayClick(day) }}
+                          style={{ top: y - 1, height: hitoH, left: `${lane * w}%`, width: `${w}%`,
+                                   borderTop: `2px dashed ${color}` }}
+                          className="absolute z-20 flex items-start">
+                          <span className="flex items-center gap-1.5 rounded-br font-mono shadow-sm"
+                            style={{ fontSize: 11, background: color, color: '#fff', maxWidth: '100%',
+                                     padding: movil ? '8px 10px' : '3px 7px' }}>
+                            <Icon size={12} strokeWidth={2.4} className="flex-shrink-0" />
+                            <span className="truncate">{minsToHHMM(start)} · {ev.title}</span>
+                            {/* Hay traslados de 12.400 ¥: el importe no se pierde
+                                al pasar de bloque a franja. Recorta el título,
+                                nunca el precio. */}
+                            {ev.cost > 0 && veCostes && (
+                              <span className="flex-shrink-0 font-semibold">
+                                {formatCurrency(ev.cost, (ev as any).currency || trip.currency)}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      )
+                    })
+                  })()}
+
+                  {bloques.map(({ ev, start, end, sigue, viene, lane, total }) => {
                     const top = yOf(start)
                     const height = Math.max(yOf(end) - top, 22)
 
@@ -398,7 +443,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                     const pal = CAT_COLOR[ev.category] || CAT_COLOR.other
                     const esTraslado = ev.category === 'transport'
                     const Icon = eventIcon(ev)
-                    const w = 100 / total[i]
+                    const w = 100 / total
                     // Un bloque de menos de una hora no da para pie de bloque.
                     const pie = height >= 2 * SLOT_H
                     const precio = ev.cost > 0 && !viene && veCostes
@@ -422,7 +467,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                         }}
                         style={{
                           top, height,
-                          left: `calc(${lane[i] * w}% + 3px)`,
+                          left: `calc(${lane * w}% + 3px)`,
                           width: `calc(${w}% - 6px)`,
                           background: pal.bg,
                           borderWidth: 1, borderRadius: 6,
@@ -431,10 +476,12 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                           borderLeft: `${esTraslado ? 4 : 3}px solid ${fijo ? C.shu : pal.ink}`,
                         }}
                         className="absolute z-10 px-2 py-1.5 text-left overflow-hidden flex flex-col hover:brightness-[.96] hover:shadow-md transition-all">
-                        {/* Arriba solo la hora. Los distintivos y el precio bajan
-                            al pie: en la fila de arriba se amontonaban hasta seis
-                            cosas y no se leía ninguna. En los bloques cortos no
-                            hay sitio para un pie, y se quedan donde estaban. */}
+                        {/* Arriba solo la hora. El importe y los distintivos bajan
+                            al pie, alineados a la izquierda como todo lo demás:
+                            en la fila de arriba se amontonaban hasta seis cosas y
+                            no se leía ninguna. Un bloque de menos de una hora no
+                            da de sí para un pie, y ahí el importe se queda arriba,
+                            pegado a la hora y también a la izquierda. */}
                         <span className="flex items-center gap-1 font-mono flex-shrink-0" style={{ fontSize: 11, letterSpacing: '.02em', color: pal.ink }}>
                           <Icon size={10} strokeWidth={2} className="flex-shrink-0 opacity-80" />
                           <span className="opacity-75">
@@ -443,10 +490,10 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                               : sigue ? `${minsToHHMM(start)} →`
                               : `${minsToHHMM(start)}–${minsToHHMM(end)}`}
                           </span>
-                          {!pie && distintivos}
                           {!pie && precio && (
-                            <span className="ml-auto flex-shrink-0 font-semibold opacity-90">{precio}</span>
+                            <span className="flex-shrink-0 font-semibold opacity-90">{precio}</span>
                           )}
+                          {!pie && distintivos}
                         </span>
                         <span className="block leading-tight" style={{
                           fontSize: 13, color: pal.ink,
@@ -463,8 +510,8 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick,
                         {pie && (distintivos || precio) && (
                           <span className="flex items-center gap-1 font-mono mt-auto pt-1 flex-shrink-0"
                             style={{ fontSize: 11, color: pal.ink }}>
+                            {precio && <span className="flex-shrink-0 font-semibold">{precio}</span>}
                             {distintivos}
-                            {precio && <span className="ml-auto flex-shrink-0 font-semibold">{precio}</span>}
                           </span>
                         )}
                       </button>
