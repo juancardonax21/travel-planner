@@ -7,20 +7,23 @@ alter table public.events drop constraint if exists payment_method_check;
 alter table public.events add constraint payment_method_check
   check (payment_method is null or payment_method in ('prepago', 'tarjeta', 'efectivo'));
 
--- Punto de partida: todo lo que cuesta dinero, a tarjeta.
+-- Punto de partida: todo lo que cuesta dinero, a tarjeta sin anotación.
 update public.events set payment_method = 'tarjeta'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and cost > 0;
 
--- Y ahora lo que no es tarjeta, con el motivo anotado.
+-- Y ahora cada gasto con su forma de pago y el motivo.
 update public.events set payment_method = 'prepago',
        note = coalesce(note || ' · ', '') || 'Pago: Ya pagado.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-24' and title = 'Vuelo Madrid-Tokio';
-update public.events set payment_method = 'efectivo',
-       note = coalesce(note || ' · ', '') || 'Pago: Ramen de madrugada o konbini; llevad suelto por si acaso.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-25' and title = 'Cena junto al hotel';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: Mostrador del Airport Limousine en Narita.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-25' and title = 'Bus limusina a T-CAT';
 update public.events set payment_method = 'prepago',
        note = coalesce(note || ' · ', '') || 'Pago: Reserva confirmada, cargo a tarjeta.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-25' and title = 'Minn Nihonbashi Suitengumae';
+update public.events set payment_method = 'efectivo',
+       note = coalesce(note || ' · ', '') || 'Pago: Ramen de madrugada o konbini; llevad suelto por si acaso.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-25' and title = 'Cena junto al hotel';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-26' and title = 'Desayuno';
@@ -33,15 +36,15 @@ update public.events set payment_method = 'prepago',
 update public.events set payment_method = 'efectivo',
        note = coalesce(note || ' · ', '') || 'Pago: Omoide Yokocho son puestos diminutos: efectivo.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-26' and title = 'Cena en Shinjuku';
-update public.events set payment_method = 'prepago',
-       note = coalesce(note || ' · ', '') || 'Pago: GetYourGuide, con tarjeta.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-27' and title = 'Taller de palillos';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-27' and title = 'Desayuno + metro';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-27' and title = 'Comida ligera';
+update public.events set payment_method = 'prepago',
+       note = coalesce(note || ' · ', '') || 'Pago: GetYourGuide, con tarjeta.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-27' and title = 'Taller de palillos';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-27' and title = 'Cena';
@@ -57,48 +60,51 @@ update public.events set payment_method = 'tarjeta',
 update public.events set payment_method = 'efectivo',
        note = coalesce(note || ' · ', '') || 'Pago: La propina se da en mano.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-29' and title = 'Free tour de Asakusa';
-update public.events set payment_method = 'tarjeta',
-       note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-29' and title = 'Cena y maletas';
 update public.events set payment_method = 'efectivo',
        note = coalesce(note || ' · ', '') || 'Pago: El plan lo indica: solo efectivo.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-29' and title = 'Tempura Daikokuya';
-update public.events set payment_method = 'efectivo',
-       note = coalesce(note || ' · ', '') || 'Pago: El plan lo indica: no acepta tarjeta ni IC.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-30' and title = 'Kiyomizu-dera';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-29' and title = 'Cena y maletas';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: Los taxis de Tokio aceptan tarjeta e IC.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-30' and title = 'Check-out y Estación de Tokio';
+update public.events set payment_method = 'prepago',
+       note = coalesce(note || ' · ', '') || 'Pago: Smart EX: se reserva y se paga online con tarjeta.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-30' and title = 'Nozomi a Kioto';
 update public.events set payment_method = 'prepago',
        note = coalesce(note || ' · ', '') || 'Pago: Reserva confirmada, cargo a tarjeta.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-30' and title = 'APA Hotel Kyoto Gion Excellent';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-30' and title = 'Comida';
+update public.events set payment_method = 'efectivo',
+       note = coalesce(note || ' · ', '') || 'Pago: El plan lo indica: no acepta tarjeta ni IC.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-30' and title = 'Kiyomizu-dera';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-30' and title = 'Cena';
-update public.events set payment_method = 'prepago',
-       note = coalesce(note || ' · ', '') || 'Pago: Smart EX: se reserva y se paga online con tarjeta.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-30' and title = 'Nozomi a Kioto';
 update public.events set payment_method = 'efectivo',
        note = coalesce(note || ' · ', '') || 'Pago: Entrada de templo (Tenryu-ji): taquilla en efectivo.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-31' and title = 'Bosque de bambú';
+update public.events set payment_method = 'efectivo',
+       note = coalesce(note || ' · ', '') || 'Pago: Taquilla pequeña de parque: contad con efectivo.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-31' and title = 'Monos de Iwatayama';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-31' and title = 'Comida en Arashiyama';
 update public.events set payment_method = 'efectivo',
-       note = coalesce(note || ' · ', '') || 'Pago: Taquilla pequeña de parque: contad con efectivo.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-31' and title = 'Monos de Iwatayama';
-update public.events set payment_method = 'efectivo',
-       note = coalesce(note || ' · ', '') || 'Pago: Puesto de santuario en Nochevieja: solo efectivo.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-31' and title = 'Okera mairi en Yasaka';
-update public.events set payment_method = 'efectivo',
        note = coalesce(note || ' · ', '') || 'Pago: Local pequeño y noche de fin de año: contad con efectivo.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-31' and title = 'Toshikoshi soba';
 update public.events set payment_method = 'efectivo',
-       note = coalesce(note || ' · ', '') || 'Pago: Año Nuevo: konbini y cadenas, y muchas cajas solo en metálico.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-01' and title = 'Comida';
+       note = coalesce(note || ' · ', '') || 'Pago: Puesto de santuario en Nochevieja: solo efectivo.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2026-12-31' and title = 'Okera mairi en Yasaka';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-01' and title = 'Desayuno largo';
+update public.events set payment_method = 'efectivo',
+       note = coalesce(note || ' · ', '') || 'Pago: Año Nuevo: konbini y cadenas, y muchas cajas solo en metálico.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-01' and title = 'Comida';
 update public.events set payment_method = 'efectivo',
        note = coalesce(note || ' · ', '') || 'Pago: Entradas de templo: taquilla en efectivo.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-01' and title = 'Kinkaku-ji y Ryoan-ji';
@@ -107,55 +113,76 @@ update public.events set payment_method = 'tarjeta',
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-01' and title = 'Cena';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-02' and title = 'Cena';
-update public.events set payment_method = 'tarjeta',
-       note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-02' and title = 'Comida';
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-02' and title = 'Desayuno';
 update public.events set payment_method = 'efectivo',
        note = coalesce(note || ' · ', '') || 'Pago: Entrada de templo: taquilla en efectivo.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-02' and title = 'Sanjusangendo';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-02' and title = 'Desayuno';
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-02' and title = 'Comida';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: Museo municipal: acepta tarjeta.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-02' and title = 'Museo del Ferrocarril';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-03' and title = 'Cena en Dotonbori';
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-02' and title = 'Cena';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: Taquilla de Kintetsu, o directamente con la IC.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-03' and title = 'Kioto → Nara';
+update public.events set payment_method = 'efectivo',
+       note = coalesce(note || ' · ', '') || 'Pago: Galletas de vendedor callejero: monedas.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-03' and title = 'Kofuku-ji y los ciervos';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-03' and title = 'Comida';
+update public.events set payment_method = 'efectivo',
+       note = coalesce(note || ' · ', '') || 'Pago: Entrada de templo: taquilla en efectivo.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-03' and title = 'Todai-ji';
 update public.events set payment_method = 'prepago',
        note = coalesce(note || ' · ', '') || 'Pago: Reserva confirmada, cargo a tarjeta.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-03' and title = 'Sotetsu Fresa Inn Kitahama';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-03' and title = 'Comida';
-update public.events set payment_method = 'efectivo',
-       note = coalesce(note || ' · ', '') || 'Pago: Galletas de vendedor callejero: monedas.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-03' and title = 'Kofuku-ji y los ciervos';
-update public.events set payment_method = 'efectivo',
-       note = coalesce(note || ' · ', '') || 'Pago: Entrada de templo: taquilla en efectivo.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-03' and title = 'Todai-ji';
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-03' and title = 'Cena en Dotonbori';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: Taquilla municipal: acepta tarjeta.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-04' and title = 'Castillo de Osaka';
 update public.events set payment_method = 'efectivo',
        note = coalesce(note || ' · ', '') || 'Pago: El plan lo indica: Daruma es solo efectivo.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-04' and title = 'Kushikatsu en Shinsekai';
 update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: Taquilla del mirador: acepta tarjeta.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-04' and title = 'Tsutenkaku y Shinsekai';
+update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-04' and title = 'Cena en Namba';
 update public.events set payment_method = 'tarjeta',
-       note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-05' and title = 'Comida en Namba';
-update public.events set payment_method = 'tarjeta',
-       note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-05' and title = 'Cena en Umeda';
+       note = coalesce(note || ' · ', '') || 'Pago: Ebisu Tower: acepta tarjeta.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-04' and title = 'La noria de Don Quijote';
 update public.events set payment_method = 'efectivo',
        note = coalesce(note || ' · ', '') || 'Pago: Puestos de mercado: mayoritariamente efectivo.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-05' and title = 'Kuromon Ichiba';
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
- where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-06' and title = 'Comida';
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-05' and title = 'Comida en Namba';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: Centro comercial: acepta tarjeta.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-05' and title = 'HEP Five';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: Taquilla del mirador: acepta tarjeta.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-05' and title = 'Umeda Sky Building';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-05' and title = 'Cena en Umeda';
 update public.events set payment_method = 'prepago',
        note = coalesce(note || ' · ', '') || 'Pago: Smart EX: se reserva y se paga online con tarjeta.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-06' and title = 'Nozomi a Tokio';
 update public.events set payment_method = 'prepago',
        note = coalesce(note || ' · ', '') || 'Pago: Reserva confirmada, cargo a tarjeta.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-06' and title = 'Minn Nihonbashi Suitengumae';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-06' and title = 'Comida';
 update public.events set payment_method = 'prepago',
        note = coalesce(note || ' · ', '') || 'Pago: Entrada online con tarjeta.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-06' and title = 'teamLab Borderless';
@@ -165,8 +192,11 @@ update public.events set payment_method = 'tarjeta',
 update public.events set payment_method = 'tarjeta',
        note = coalesce(note || ' · ', '') || 'Pago: La mayoría de restaurantes urbanos acepta tarjeta, pero los locales pequeños no: llevad efectivo de reserva.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-07' and title = 'Desayuno';
+update public.events set payment_method = 'tarjeta',
+       note = coalesce(note || ' · ', '') || 'Pago: Mostrador de T-CAT.'
+ where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-07' and title = 'Bus a Narita T2';
 update public.events set payment_method = 'prepago',
        note = coalesce(note || ' · ', '') || 'Pago: Ya pagado.'
  where trip_id = 'f4215d8a-1df5-492d-aac5-877d8f4e4df9' and day = '2027-01-07' and title = 'Vuelo Tokio-Madrid';
 
--- 52 gastos clasificados.
+-- 62 gastos clasificados con motivo.
