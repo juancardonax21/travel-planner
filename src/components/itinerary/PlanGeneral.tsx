@@ -1,8 +1,8 @@
 'use client'
 import type { Trip, Event } from '@/types'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
-import { MapPin, BedDouble, Footprints, Plane, TrainFront } from 'lucide-react'
+import { MapPin, BedDouble, Footprints, Plane, TrainFront, Sparkles } from 'lucide-react'
 
 /* Plan general: el viaje leído de un vistazo.
  *
@@ -13,6 +13,13 @@ import { MapPin, BedDouble, Footprints, Plane, TrainFront } from 'lucide-react'
  * La ciudad sale de las ubicaciones ya geocodificadas de cada día, y los
  * titulares de cada jornada, de las actividades con nombre propio: nada de
  * esto se escribe a mano, así que sigue al plan cuando el plan cambia.
+ *
+ * La excepción es el ancla, que sí está escrita: dice por qué ese día está en
+ * el viaje, y eso no se deduce de una lista de actividades. Cuando la hay,
+ * manda ella.
+ *
+ * Aquí no se habla de dinero. El viaje se lee por lo que se hace; lo que
+ * cuesta se mira entero en la pestaña de presupuesto.
  */
 
 /** Ciudad a partir de la dirección geocodificada.
@@ -63,8 +70,9 @@ function respaldo(evs: Event[]): string {
 
 type Tramo = { ciudad: string; hotel?: Event; dias: string[]; eventos: Event[] }
 
-export default function PlanGeneral({ trip, events, days, onDayClick, veCostes = true }:
-  { trip: Trip; events: Event[]; days: string[]; onDayClick: (d: string) => void; veCostes?: boolean }) {
+export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {} }:
+  { trip: Trip; events: Event[]; days: string[]; onDayClick: (d: string) => void
+    anclas?: Record<string, string> }) {
 
   // Un tramo dura lo que dura un alojamiento. Los días sin hotel —los de
   // vuelo— quedan aparte, que son tránsito y no estancia.
@@ -85,12 +93,6 @@ export default function PlanGeneral({ trip, events, days, onDayClick, veCostes =
   return (
     <div className="mb-4">
       {tramos.map((tr, i) => {
-        const porMoneda: Record<string, number> = {}
-        tr.eventos.forEach(e => {
-          if (!e.cost) return
-          const m = (e as any).currency || trip.currency
-          porMoneda[m] = (porMoneda[m] || 0) + e.cost
-        })
         const hotel = tr.hotel
         const pasosTramo = tr.dias.reduce((s, d) =>
           s + pasosDelDia(events.filter(e => e.day === d)).pasos, 0)
@@ -140,10 +142,15 @@ export default function PlanGeneral({ trip, events, days, onDayClick, veCostes =
                               ? <Plane size={12} strokeWidth={2} />
                               : <TrainFront size={12} strokeWidth={2} />}
                             {largo.title}
-                            {tit.length > 0 && ' ·'}
+                            {(anclas[day] || tit.length > 0) && ' ·'}
                           </span>
                         )}
-                        {tit.length > 0 ? tit.join(', ') : (largo ? '' : respaldo(evs))}
+                        {anclas[day] ? (
+                          <span className="inline-flex items-start gap-1.5 text-violet-800">
+                            <Sparkles size={12} strokeWidth={2} className="flex-shrink-0 mt-0.5 text-violet-500" />
+                            {anclas[day]}
+                          </span>
+                        ) : (tit.length > 0 ? tit.join(', ') : (largo ? '' : respaldo(evs)))}
                       </span>
                     </button>
                   )
@@ -151,9 +158,6 @@ export default function PlanGeneral({ trip, events, days, onDayClick, veCostes =
               </div>
 
               <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400 flex-wrap">
-                {veCostes && Object.entries(porMoneda).map(([m, v]) => (
-                  <span key={m} className="font-mono text-slate-600">{formatCurrency(v, m)}</span>
-                ))}
                 {pasosTramo > 0 && (
                   <span className="inline-flex items-center gap-1">
                     <Footprints size={12} strokeWidth={1.8} /> ~{formateaPasos(pasosTramo)} pasos

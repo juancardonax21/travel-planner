@@ -400,6 +400,9 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const [events, setEvents] = useState<Event[]>([])
   const [tripMembers, setTripMembers] = useState<any[]>([])
   const [dayNotes, setDayNotes] = useState<Record<string, string>>({})
+  // El ancla del día: lo que se va a recordar de esa jornada. Vive aparte de
+  // las notas, que son un bloc de recados.
+  const [anclas, setAnclas] = useState<Record<string, string>>({})
   const [weather, setWeather] = useState<Record<string, WeatherDay>>({})
   const [selDay, setSelDay] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -456,16 +459,28 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     setTripMembers((tm || []).map((item: any) => item.family_member).filter(Boolean))
     setEvents(ev || [])
     const notes: Record<string, string> = {}
-    ;(dn || []).forEach((n: any) => { notes[n.day] = n.content })
+    const anc: Record<string, string> = {}
+    ;(dn || []).forEach((n: any) => { notes[n.day] = n.content; if (n.ancla) anc[n.day] = n.ancla })
     setDayNotes(notes)
+    setAnclas(anc)
     setLoading(false)
   }
 
   async function saveNote(day: string, content: string) {
     setDayNotes(n => ({ ...n, [day]: content }))
-    const { data: ex } = await supabase.from('day_notes').select('id').eq('trip_id', id).eq('day', day).single()
-    if (ex) await supabase.from('day_notes').update({ content }).eq('id', ex.id)
-    else await supabase.from('day_notes').insert({ trip_id: id, day, content })
+    await guardaDia(day, { content })
+  }
+
+  async function saveAncla(day: string, ancla: string) {
+    setAnclas(a => ({ ...a, [day]: ancla }))
+    await guardaDia(day, { ancla })
+  }
+
+  /** day_notes tiene una fila por día: se actualiza la que haya o se crea. */
+  async function guardaDia(day: string, campos: Record<string, string>) {
+    const { data: ex } = await supabase.from('day_notes').select('id').eq('trip_id', id).eq('day', day).maybeSingle()
+    if (ex) await supabase.from('day_notes').update(campos).eq('id', ex.id)
+    else await supabase.from('day_notes').insert({ trip_id: id, day, content: '', ...campos })
   }
 
   function setNumStops(n: number) {
@@ -1109,9 +1124,8 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
         {/* Trip Route */}
         {viewMode === 'route' && (
-          <PlanGeneral trip={trip} events={events} days={days}
-            onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }}
-            veCostes={veCostes} />
+          <PlanGeneral trip={trip} events={events} days={days} anclas={anclas}
+            onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }} />
         )}
 
         {/* Week view */}
@@ -1344,6 +1358,17 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
             </div>
 
             {/* Mapa Modal Fullscreen - ELIMINADO */}
+
+            {/* Lo que se va a recordar de este día. Va arriba del todo porque
+                es el motivo de que el día esté en el viaje. */}
+            <div className="bg-violet-50 border border-violet-200 rounded-2xl p-3 mb-3">
+              <div className="text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1 flex items-center gap-1.5"><Sparkles size={11} strokeWidth={2} /> El ancla del día</div>
+              <textarea className="w-full bg-transparent text-sm text-violet-900 resize-none focus:outline-none min-h-[40px] leading-snug"
+                placeholder="¿Qué es lo que no se olvida de este día?"
+                defaultValue={anclas[selDay] || ''}
+                key={'ancla-' + selDay}
+                onBlur={e => { if (e.target.value !== (anclas[selDay] || '')) saveAncla(selDay, e.target.value) }} />
+            </div>
 
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
               <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1 flex items-center gap-1.5"><NotebookPen size={11} strokeWidth={2} /> Notas del día</div>
