@@ -14,6 +14,7 @@ const SLOT_MIN = 30
 const SLOT_H = 34          // alto de media hora
 const RAIL_W = 56          // columna de horas
 const DAY_W = 190          // ancho mínimo de cada día
+const HEAD_H = 66          // alto de la cabecera de días, para fijar la franja de hotel
 
 // Color por categoría, tomado de la paleta de la app.
 type Paleta = { bg: string; line: string; ink: string }
@@ -57,15 +58,18 @@ function timeToMins(t?: string | null): number {
 /** Inicio y fin en minutos. Los vuelos usan sus segmentos. */
 function eventRange(ev: Event): { start: number; end: number } {
   const e = ev as any
-  if (ev.category === 'hotel') {
-    const start = timeToMins(ev.time)
-    return { start, end: start + SLOT_MIN }
-  }
   const segs = e.flight_segments as any[] | null
   if (segs && segs.length) {
+    const ultimo = segs[segs.length - 1]
     const start = timeToMins(segs[0]?.dep_time || ev.time)
-    let end = timeToMins(segs[segs.length - 1]?.arr_time) || start + 60
-    if (end <= start) end += 24 * 60
+    let end = timeToMins(ultimo?.arr_time) || start + 60
+    // Un vuelo largo aterriza al día siguiente o más allá: sin esto el bloque
+    // se dibujaba como si llegara la misma tarde.
+    const dias = ultimo?.arr_date && ev.day
+      ? Math.round((Date.parse(ultimo.arr_date + 'T00:00:00') - Date.parse(ev.day + 'T00:00:00')) / 86400000)
+      : 0
+    if (dias > 0) end += dias * 24 * 60
+    else if (end <= start) end += 24 * 60
     return { start, end }
   }
   const start = timeToMins(ev.time)
@@ -148,6 +152,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
   const gridH = slots * SLOT_H
   const yOf = (mins: number) => ((mins - originMin) / SLOT_MIN) * SLOT_H
   const ticks = Array.from({ length: slots }, (_, i) => originMin + i * SLOT_MIN)
+  const hoteles = events.filter(e => e.category === 'hotel')
 
   return (
     <div>
@@ -181,6 +186,40 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
             })}
           </div>
 
+          {/* ── franja de alojamiento: qué hotel toca cada noche ── */}
+          {hoteles.length > 0 && (
+            <div className="flex sticky z-20" style={{ top: HEAD_H, background: C.surface, borderBottom: `1px solid ${C.ruleStrong}` }}>
+              <div style={{ width: RAIL_W, background: C.surface }}
+                className="flex-shrink-0 sticky left-0 z-30 flex items-center justify-end pr-2">
+                <BedDouble size={11} strokeWidth={2} style={{ color: C.faint }} />
+              </div>
+              {days.map(day => {
+                const h = hoteles.find(x => {
+                  const e = x as any
+                  return e.accom_checkin_date && e.accom_checkout_date
+                    && day >= e.accom_checkin_date && day < e.accom_checkout_date
+                })
+                const entra = h && (h as any).accom_checkin_date === day
+                const pal = CAT_COLOR.hotel
+                return (
+                  <div key={day} style={{ width: DAY_W, borderLeft: `1px solid ${C.rule}` }}
+                    className="flex-shrink-0 px-1 py-1">
+                    {h && (
+                      <button onClick={() => onEventClick ? onEventClick(h) : onDayClick(day)}
+                        style={{ background: pal.bg, color: pal.ink, borderColor: pal.line }}
+                        className="w-full truncate text-left px-2 py-0.5 rounded border hover:brightness-95 transition-all"
+                        title={h.title}>
+                        <span style={{ fontSize: 10.8, fontWeight: entra ? 700 : 400, opacity: entra ? 1 : .7 }}>
+                          {h.title}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
           {/* ── rejilla ── */}
           <div className="flex relative" style={{ height: gridH }}>
             {/* raíl de horas */}
@@ -198,7 +237,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
 
             {/* columnas de día */}
             {days.map(day => {
-              const dayEvents = events.filter(e => e.day === day)
+              const dayEvents = events.filter(e => e.day === day && e.category !== 'hotel')
                 .map(ev => ({ ev, ...eventRange(ev) }))
                 .sort((a, b) => a.start - b.start || b.end - a.end)
               const { lane, total } = assignLanes(dayEvents)
