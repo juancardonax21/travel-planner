@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/tipo-cambio", "schedule": "0 6 * * 1" }
+  ]
+}

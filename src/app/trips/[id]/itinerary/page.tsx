@@ -1125,7 +1125,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
         {/* Trip Route */}
         {viewMode === 'route' && (
           <PlanGeneral trip={trip} events={events} days={days} anclas={anclas}
-            onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }} />
+            onDayClick={day => { setSelDay(day); setViewMode('day'); setShowForm(false) }}
+            onRelato={async relato => {
+              setTrip(t => (t ? { ...t, relato } as any : t))
+              await supabase.from('trips').update({ relato }).eq('id', id)
+            }} />
         )}
 
         {/* Week view */}

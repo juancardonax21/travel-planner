@@ -70,9 +70,9 @@ function respaldo(evs: Event[]): string {
 
 type Tramo = { ciudad: string; hotel?: Event; dias: string[]; eventos: Event[] }
 
-export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {} }:
+export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {}, onRelato }:
   { trip: Trip; events: Event[]; days: string[]; onDayClick: (d: string) => void
-    anclas?: Record<string, string> }) {
+    anclas?: Record<string, string>; onRelato?: (t: string) => void }) {
 
   // Un tramo dura lo que dura un alojamiento. Los días sin hotel —los de
   // vuelo— quedan aparte, que son tránsito y no estancia.
@@ -90,8 +90,22 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
     }
   })
 
+  const relato = (trip as any).relato as string | undefined
+
   return (
     <div className="mb-4">
+      {/* Por qué este viaje es este y no otro. Las anclas cuentan cada día;
+          esto cuenta el conjunto, que no se deduce de una lista de eventos. */}
+      {onRelato && (
+        <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4">
+          <textarea
+            className="w-full bg-transparent resize-none focus:outline-none text-[15px] leading-relaxed text-slate-700 min-h-[96px]"
+            placeholder="¿Qué es este viaje? Las etapas, y lo que lo sostiene."
+            defaultValue={relato || ''}
+            key={'relato-' + trip.id}
+            onBlur={e => { if (e.target.value !== (relato || '')) onRelato(e.target.value) }} />
+        </div>
+      )}
       {tramos.map((tr, i) => {
         const hotel = tr.hotel
 
