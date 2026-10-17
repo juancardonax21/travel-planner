@@ -1110,7 +1110,11 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
       strategy="lazyOnload"
     />
     <div>
-      <div className={`${viewMode === 'week' ? 'max-w-[1180px]' : 'max-w-4xl'} mx-auto px-4 pb-12`}>
+      {/* La cuadrícula va a página completa. Las columnas de día miden 215 px
+          fijos, así que cada píxel de ancho que se le da es un día más a la
+          vista; estrecharlas sería peor, porque las etiquetas dejan de caber.
+          Las demás vistas se leen mejor en una columna estrecha. */}
+      <div className={`${viewMode === 'week' ? 'max-w-none' : 'max-w-4xl'} mx-auto px-4 pb-12`}>
 
         {/* View toggle + day picker */}
         <div className="flex items-center justify-between mb-2 pt-2">
