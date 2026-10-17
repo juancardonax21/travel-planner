@@ -211,9 +211,12 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
                           </span>
                         )}
                         {anclas[day] ? (
-                          <span className="inline-flex items-start gap-1.5 text-violet-800">
-                            <Sparkles size={12} strokeWidth={2} className="flex-shrink-0 mt-0.5 text-violet-500" />
-                            {anclas[day]}
+                          /* El ancla ya no es un destello de una línea: cuenta
+                             el día entero. En violeta entero se hacía pesada,
+                             así que el color se queda solo en la chispa. */
+                          <span className="inline-flex items-start gap-1.5 text-slate-700">
+                            <Sparkles size={12} strokeWidth={2} className="flex-shrink-0 mt-[3px] text-violet-500" />
+                            <span>{anclas[day]}</span>
                           </span>
                         ) : (tit.length > 0 ? tit.join(', ') : (largo ? '' : respaldo(evs)))}
                       </span>
