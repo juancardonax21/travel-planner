@@ -2,7 +2,7 @@ export const CAT_CONFIG = {
   transport: { label: 'Transporte', color: '#1D4ED8', bg: '#DBEAFE', emoji: '✈️' },
   hotel:     { label: 'Alojamiento', color: '#065F46', bg: '#D1FAE5', emoji: '🏨' },
   activity:  { label: 'Actividad',  color: '#5B21B6', bg: '#EDE9FE', emoji: '🎯' },
-  meal:      { label: 'Comida',     color: '#92400E', bg: '#FEF3C7', emoji: '🍽️' },
+  meal:      { label: 'Comida',     color: '#C2410C', bg: '#FFEDD5', emoji: '🍽️' },
   other:     { label: 'Otro',       color: '#374151', bg: '#F3F4F6', emoji: '📌' },
 } as const
 

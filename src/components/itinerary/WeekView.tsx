@@ -30,13 +30,13 @@ const CAT_COLOR: Record<string, Paleta> = {
   transport: { bg: '#DBEAFE', line: '#60A5FA', ink: '#1D4ED8' },
   hotel:     { bg: '#D1FAE5', line: '#6EE7B7', ink: '#047857' },
   activity:  { bg: '#FFFFFF', line: '#DDD6FE', ink: '#6D28D9' },
-  meal:      { bg: '#FEF3C7', line: '#FCD34D', ink: '#B45309' },
+  meal:      { bg: '#FFEDD5', line: '#FB923C', ink: '#C2410C' },
   other:     { bg: '#F1F5F9', line: '#CBD5E1', ink: '#475569' },
 }
 /* Una atracción con entrada no se parece a callejear por Ameyoko, aunque las
    dos sean «actividad». Las de pago van en amarillo; las de andar por ahí, en
-   blanco. El amarillo es más saturado que el ámbar de las comidas para que no
-   se confundan a simple vista. */
+   blanco. Las comidas, que antes eran ámbar, se han ido al naranja: dos
+   amarillos vecinos no se distinguían de un vistazo. */
 const ATRACCION: Paleta = { bg: '#FEF08A', line: '#CA8A04', ink: '#854D0E' }
 const esAtraccion = (ev: Event) =>
   ev.category === 'activity' && Number((ev as any).cost) > 0
