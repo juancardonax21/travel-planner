@@ -16,7 +16,8 @@ import {
 const SLOT_MIN = 30
 const SLOT_H = 34          // alto de media hora
 const RAIL_W = 48          // columna de horas
-const DAY_W = 215          // ancho de cada día en escritorio
+const DAY_W = 215          // ancho ideal de cada día en escritorio
+const DAY_MIN = 170        // por debajo, la hora y el título dejan de caber
 const MOVIL = 768          // por debajo, un día ocupa la pantalla entera
 const HITO_H = 26          // alto del hito; en móvil sube para poder tocarlo
 const HITO_H_MOVIL = 40
@@ -253,12 +254,20 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
       const esMovil = window.innerWidth < MOVIL
       setMovil(esMovil)
       const w = caja.current?.clientWidth ?? 0
-      setAnchoDia(esMovil && w ? Math.max(240, w - RAIL_W) : DAY_W)
+      if (esMovil) { setAnchoDia(w ? Math.max(240, w - RAIL_W) : DAY_W); return }
+      // En escritorio los días se reparten el ancho libre: se mete cuantas
+      // columnas enteras quepan sin bajar de DAY_MIN y se estiran hasta
+      // llenarlo. Con un ancho fijo sobraba una franja muerta a la derecha,
+      // demasiado estrecha para otro día; así ese hueco son días.
+      const libre = w - RAIL_W
+      if (libre <= 0) { setAnchoDia(DAY_W); return }
+      const caben = Math.max(1, Math.min(days.length, Math.floor(libre / DAY_MIN)))
+      setAnchoDia(Math.min(DAY_W, libre / caben))
     }
     medir()
     window.addEventListener('resize', medir)
     return () => window.removeEventListener('resize', medir)
-  }, [])
+  }, [days.length])
   // La franja de hotel se queda pegada justo debajo de la cabecera, así que
   // necesita su alto exacto. Se mide en vez de darlo por supuesto: cambia con
   // el rótulo de planes y con la línea de pasos, que no todos los días tienen.
