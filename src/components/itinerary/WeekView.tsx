@@ -14,7 +14,9 @@ import {
    igual que en el plan en papel. */
 
 const SLOT_MIN = 30
-const SLOT_H = 34          // alto de media hora
+const SLOT_H = 34          // alto de media hora en escritorio
+const SLOT_H_MOVIL = 26    // en el móvil la pantalla es alta pero estrecha:
+                           // bajando la franja entran cuatro horas más
 const RAIL_W = 48          // columna de horas
 const DAY_W = 215          // ancho ideal de cada día en escritorio
 const DAY_MIN = 170        // por debajo, la hora y el título dejan de caber
@@ -301,8 +303,9 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
   })
   const originMin = startH * 60
   const slots = ((endH - startH) * 60) / SLOT_MIN
-  const gridH = slots * SLOT_H
-  const yOf = (mins: number) => ((mins - originMin) / SLOT_MIN) * SLOT_H
+  const slotH = movil ? SLOT_H_MOVIL : SLOT_H
+  const gridH = slots * slotH
+  const yOf = (mins: number) => ((mins - originMin) / SLOT_MIN) * slotH
   const ticks = Array.from({ length: slots }, (_, i) => originMin + i * SLOT_MIN)
   const hoteles = events.filter(e => e.category === 'hotel')
 
@@ -348,7 +351,28 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
               return (
                 <button key={day} onClick={() => onDayClick(day)}
                   style={{ width: anchoDe.get(day), borderLeft: `1px solid ${C.rule}`, scrollSnapAlign: 'start' }}
-                  className="flex-shrink-0 py-2 px-2 text-center hover:bg-blue-50 transition-colors">
+                  className={`flex-shrink-0 px-2 text-center hover:bg-blue-50 transition-colors ${movil ? 'py-1.5' : 'py-2'}`}>
+                  {/* En móvil solo se ve un día, así que la cabecera no tiene
+                      que gritar cuál es: en cuatro líneas se comía cien píxeles
+                      de pantalla, que son cuatro horas de rejilla. En una
+                      línea dice lo mismo. */}
+                  {movil ? (
+                    <span className="flex items-center justify-center gap-2 truncate" style={{ fontSize: 12.5 }}>
+                      <span className="font-bold flex-shrink-0" style={{ color: evs.length ? C.ink : C.faint }}>
+                        {dt.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      </span>
+                      {place && <span className="truncate" style={{ color: C.accent }}>{place}</span>}
+                      {(() => {
+                        const p = pasosDelDia(evs)
+                        if (!p.pasos) return null
+                        return (
+                          <span className="inline-flex items-center gap-1 flex-shrink-0" style={{ color: C.muted }}>
+                            <Pie size={10} strokeWidth={2} /> ~{formateaPasos(p.pasos)}
+                          </span>
+                        )
+                      })()}
+                    </span>
+                  ) : (<>
                   <span className="block font-mono uppercase" style={{ fontSize: 11, letterSpacing: '.12em', color: C.muted }}>
                     {dt.toLocaleDateString('es-ES', { weekday: 'long' })}
                   </span>
@@ -368,6 +392,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                       </span>
                     )
                   })()}
+                  </>)}
                   {/* Día con dos planes: cada carril lleva su nombre aquí arriba,
                       para que las etiquetas no tengan que repetirlo una por una. */}
                   {planes.length > 1 && (
@@ -518,12 +543,12 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                     const Icon = eventIcon(ev)
                     const w = 100 / total
                     // Un bloque de menos de una hora no da para pie de bloque.
-                    const pie = height >= 2 * SLOT_H
-                    const distintivos = (contratado || enEfectivo || (avisos.length > 0 && height <= 4 * SLOT_H)) ? (
+                    const pie = height >= 2 * slotH
+                    const distintivos = (contratado || enEfectivo || (avisos.length > 0 && height <= 4 * slotH)) ? (
                       <>
                         {contratado && <CheckCircle2 size={10} strokeWidth={2.4} className="flex-shrink-0" />}
                         {enEfectivo && <Banknote size={11} strokeWidth={2.2} className="flex-shrink-0" style={{ color: C.shu }} />}
-                        {avisos.length > 0 && height <= 4 * SLOT_H && (
+                        {avisos.length > 0 && height <= 4 * slotH && (
                           <AlertTriangle size={10} strokeWidth={2.4} className="flex-shrink-0" style={{ color: C.shu }} />
                         )}
                       </>
@@ -572,7 +597,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
                         }}>
                           {tituloSinPlan(ev)}
                         </span>
-                        {avisos.length > 0 && height > 4 * SLOT_H && (
+                        {avisos.length > 0 && height > 4 * slotH && (
                           <span className="block leading-snug mt-1"
                             style={{ fontSize: 11, color: C.shu, fontWeight: 500 }}>
                             {avisos[0]}
