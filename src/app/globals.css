@@ -40,6 +40,12 @@
   @supports (height: 100dvh) {
     .rejilla-alto { max-height: calc(100dvh - 190px); }
   }
+  /* Teléfono tumbado: la pantalla se queda en unos 400 px de alto y los 190
+     de cabecera, pestañas y leyenda se comían la mitad. Ahí la rejilla se
+     queda con casi todo. */
+  @media (max-height: 560px) and (orientation: landscape) {
+    .rejilla-alto { max-height: calc(100dvh - 64px); }
+  }
   /* En móvil cada día ocupa la pantalla: el desplazamiento encaja de día en día. */
   @media (max-width: 767px) {
     /* El raíl de horas va fijo a la izquierda: sin este margen, el encaje

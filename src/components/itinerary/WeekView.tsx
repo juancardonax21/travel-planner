@@ -21,6 +21,7 @@ const RAIL_W = 48          // columna de horas
 const DAY_W = 215          // ancho ideal de cada día en escritorio
 const DAY_MIN = 170        // por debajo, la hora y el título dejan de caber
 const MOVIL = 768          // por debajo, un día ocupa la pantalla entera
+const ALTO_JUSTO = 560     // por debajo, el alto es el problema: teléfono tumbado
 const HITO_H = 26          // alto del hito; en móvil sube para poder tocarlo
 const HITO_H_MOVIL = 40
 const HEAD_H = 66          // alto de partida de la cabecera; luego se mide
@@ -259,10 +260,16 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
   const caja = useRef<HTMLDivElement>(null)
   const [anchoDia, setAnchoDia] = useState(DAY_W)
   const [movil, setMovil] = useState(false)
+  /* «Móvil» mira el ancho, y eso basta para decidir si un día ocupa la
+     pantalla. Pero un teléfono tumbado mide 812 de ancho y 375 de alto: por
+     ancho es escritorio y por alto no cabe nada. Lo que se encoge —la
+     cabecera y la franja de media hora— se decide por el alto. */
+  const [compacto, setCompacto] = useState(false)
   useEffect(() => {
     const medir = () => {
       const esMovil = window.innerWidth < MOVIL
       setMovil(esMovil)
+      setCompacto(esMovil || window.innerHeight < ALTO_JUSTO)
       const w = caja.current?.clientWidth ?? 0
       if (esMovil) { setAnchoDia(w ? Math.max(240, w - RAIL_W) : DAY_W); return }
       // En escritorio los días se reparten el ancho libre: se mete cuantas
@@ -281,6 +288,22 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
   // La franja de hotel se queda pegada justo debajo de la cabecera, así que
   // necesita su alto exacto. Se mide en vez de darlo por supuesto: cambia con
   // el rótulo de planes y con la línea de pasos, que no todos los días tienen.
+  /* En el móvil la pantalla vertical es oro, y en horizontal más todavía.
+     La cabecera se repliega en cuanto se baja y vuelve al llegar arriba. Se
+     probó a esconderla solo al bajar y sacarla al subir, como la barra del
+     navegador, pero con el dedo da tirones: esto es predecible. Se colapsa
+     la altura en vez de moverla con transform para que
+     el ResizeObserver de abajo la siga midiendo bien y la franja del hotel
+     no se quede flotando en el aire. */
+  const [cabeceraOculta, setCabeceraOculta] = useState(false)
+  useEffect(() => {
+    const el = caja.current
+    if (!el || !compacto) { setCabeceraOculta(false); return }
+    const alScroll = () => setCabeceraOculta(el.scrollTop > 48)
+    el.addEventListener('scroll', alScroll, { passive: true })
+    return () => el.removeEventListener('scroll', alScroll)
+  }, [compacto])
+
   const cabecera = useRef<HTMLDivElement>(null)
   const [altoCabecera, setAltoCabecera] = useState(HEAD_H)
   useEffect(() => {
@@ -303,7 +326,7 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
   })
   const originMin = startH * 60
   const slots = ((endH - startH) * 60) / SLOT_MIN
-  const slotH = movil ? SLOT_H_MOVIL : SLOT_H
+  const slotH = compacto ? SLOT_H_MOVIL : SLOT_H
   const gridH = slots * slotH
   const yOf = (mins: number) => ((mins - originMin) / SLOT_MIN) * slotH
   const ticks = Array.from({ length: slots }, (_, i) => originMin + i * SLOT_MIN)
@@ -340,7 +363,12 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
         <div style={{ minWidth: RAIL_W + anchoTotal }}>
 
           {/* ── cabecera de días ── */}
-          <div ref={cabecera} className="flex sticky top-0 z-30" style={{ borderBottom: `2px solid ${C.ink}`, background: C.surface }}>
+          <div ref={cabecera} className="flex sticky top-0 z-30 transition-[height,opacity] duration-200"
+            style={{
+              borderBottom: `${cabeceraOculta ? 0 : 2}px solid ${C.ink}`,
+              background: C.surface,
+              ...(cabeceraOculta ? { height: 0, opacity: 0, overflow: 'hidden' } : {}),
+            }}>
             <div style={{ width: RAIL_W, background: C.surface }}
               className="flex-shrink-0 sticky left-0 z-40" />
             {days.map(day => {
@@ -351,12 +379,12 @@ export default function WeekView({ trip, events, days, onDayClick, onEventClick 
               return (
                 <button key={day} onClick={() => onDayClick(day)}
                   style={{ width: anchoDe.get(day), borderLeft: `1px solid ${C.rule}`, scrollSnapAlign: 'start' }}
-                  className={`flex-shrink-0 px-2 text-center hover:bg-blue-50 transition-colors ${movil ? 'py-1.5' : 'py-2'}`}>
+                  className={`flex-shrink-0 px-2 text-center hover:bg-blue-50 transition-colors ${compacto ? 'py-1.5' : 'py-2'}`}>
                   {/* En móvil solo se ve un día, así que la cabecera no tiene
                       que gritar cuál es: en cuatro líneas se comía cien píxeles
                       de pantalla, que son cuatro horas de rejilla. En una
                       línea dice lo mismo. */}
-                  {movil ? (
+                  {compacto ? (
                     <span className="flex items-center justify-center gap-2 truncate" style={{ fontSize: 12.5 }}>
                       <span className="font-bold flex-shrink-0" style={{ color: evs.length ? C.ink : C.faint }}>
                         {dt.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
