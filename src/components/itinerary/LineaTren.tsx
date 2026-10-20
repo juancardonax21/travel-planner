@@ -27,6 +27,7 @@ export const LINEAS: Record<string, Linea> = {
   fukutoshin:  { nombre: 'Fukutoshin',  codigo: 'F', color: '#9C5E31', operador: 'Tokyo Metro' },
   // Toei
   oedo:        { nombre: 'Oedo',        codigo: 'E', color: '#B6007A', operador: 'Toei' },
+  asakusa:     { nombre: 'Asakusa',     codigo: 'A', color: '#E85298', operador: 'Toei' },
   // Osaka Metro
   midosuji:    { nombre: 'Midosuji',    codigo: 'M', color: '#E5171F', operador: 'Osaka Metro' },
   tanimachi:   { nombre: 'Tanimachi',   codigo: 'T', color: '#522886', operador: 'Osaka Metro' },
@@ -34,6 +35,8 @@ export const LINEAS: Record<string, Linea> = {
   sakaisuji:   { nombre: 'Sakaisuji',   codigo: 'K', color: '#814721', operador: 'Osaka Metro' },
   sennichimae: { nombre: 'Sennichimae', codigo: 'S', color: '#E44D93', operador: 'Osaka Metro' },
   // JR y privadas de las que no doy color: gris, con el nombre entero
+  jr_chuo:     { nombre: 'JR Chuo',     codigo: 'JR', color: '#64748B', operador: 'JR East' },
+  jr_yamanote: { nombre: 'JR Yamanote', codigo: 'JR', color: '#64748B', operador: 'JR East' },
   jr_nara:     { nombre: 'JR Nara',     codigo: 'JR', color: '#64748B', operador: 'JR West' },
   jr_sagano:   { nombre: 'JR Sagano',   codigo: 'JR', color: '#64748B', operador: 'JR West' },
   jr_kyoto:    { nombre: 'JR Kioto',    codigo: 'JR', color: '#64748B', operador: 'JR West' },
