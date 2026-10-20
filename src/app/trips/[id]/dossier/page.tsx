@@ -2,10 +2,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatDate } from '@/lib/utils'
+import { useRolViaje } from '@/lib/rolViaje'
 import { Plane, BedDouble, Ticket, Car, UtensilsCrossed, FileText, MapPin, CreditCard, CheckCircle2, AlertTriangle, Circle, CalendarDays, Users, Tag } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 
 export default function DossierPage({ params }: { params: { id: string } }) {
+  const { veCostes } = useRolViaje(params?.id)
   const { id } = params
   const [trip, setTrip] = useState<any>(null)
   const [events, setEvents] = useState<any[]>([])
@@ -165,7 +167,7 @@ export default function DossierPage({ params }: { params: { id: string } }) {
                   {ev.notes && <div style={{ fontSize: 9, color: '#aaa', marginTop: 2 }}>{ev.notes}</div>}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0, fontSize: 10 }}>
-                  {ev.cost > 0 && <div style={{ fontWeight: 700, color: '#1e3a5f' }}>{ev.cost.toLocaleString()} {ev.currency}</div>}
+                  {ev.cost > 0 && veCostes && <div style={{ fontWeight: 700, color: '#1e3a5f' }}>{ev.cost.toLocaleString()} {ev.currency}</div>}
                   {ev.paid !== null && <div style={{ fontSize: 8, color: ev.paid ? '#065f46' : '#92400e' }}>{ev.paid ? '✓ Pagado' : '○ Pendiente'}</div>}
                 </div>
               </div>
@@ -195,7 +197,11 @@ export default function DossierPage({ params }: { params: { id: string } }) {
         })()}
       </div>
 
-      {/* ── PRESUPUESTO ────────────────────────────────────── */}
+      {/* ── PRESUPUESTO ──────────────────────────────────────
+           El dossier se imprime y se reparte. Quien entra con el rol
+           «sin costes» no lo ve aquí tampoco: si no, bastaba con darle a
+           imprimir para saltarse el candado. */}
+      {veCostes && (
       <div className="pb" style={{ padding: '20px 0' }}>
         <h2>Presupuesto del viaje</h2>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
@@ -249,6 +255,7 @@ export default function DossierPage({ params }: { params: { id: string } }) {
           ))}
         </div>
       </div>
+      )}
 
       {/* ── VOUCHERS / QR ──────────────────────────────────── */}
       {vouchers.length > 0 && (

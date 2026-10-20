@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Trip } from '@/types'
 import { daysUntil, formatDate, formatCurrency } from '@/lib/utils'
+import { useRolViaje } from '@/lib/rolViaje'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Plane, BedDouble, Car, Compass, UtensilsCrossed, Tag, CheckCircle2, Circle, ArrowLeftRight, AlertTriangle, Ticket, Shield, CreditCard } from 'lucide-react'
 
@@ -31,6 +32,7 @@ type EventItem = {
 
 export default function BudgetPage({ params }: { params: { id: string } }) {
   const { id } = params
+  const { veCostes } = useRolViaje(id)
   const [trip, setTrip] = useState<Trip | null>(null)
   const [items, setItems] = useState<EventItem[]>([])
   const [showAlt, setShowAlt] = useState(true)
@@ -55,6 +57,16 @@ export default function BudgetPage({ params }: { params: { id: string } }) {
   if (loading || !trip) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-slate-400 animate-pulse">Cargando...</div>
+    </div>
+  )
+
+  /* Esconder la pestaña del menú no es protegerla: quien tenga la dirección
+     entra igual. Aquí se corta de verdad. */
+  if (!veCostes) return (
+    <div className="min-h-screen flex items-center justify-center px-6">
+      <div className="text-center text-slate-400 text-sm max-w-xs">
+        El presupuesto de este viaje no está compartido contigo.
+      </div>
     </div>
   )
 
