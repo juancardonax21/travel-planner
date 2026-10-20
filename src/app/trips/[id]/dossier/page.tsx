@@ -55,11 +55,27 @@ export default function DossierPage({ params }: { params: { id: string } }) {
   const days = [...new Set(events.map((e: any) => e.day))].sort()
   const byDay = (day: string) => events.filter(e => e.day === day)
 
-  // Budget by category
+  /* Presupuesto. Cada evento guarda su importe en la moneda en la que se
+     paga: el vuelo en euros, el shinkansen en yenes. Sumarlos a pelo daba un
+     número sin sentido con un € detrás —mil euros de vuelo más sesenta mil
+     yenes de tren eran sesenta y un mil «euros»—, así que todo se pasa antes
+     a euros con el tipo de cambio del viaje.
+     exchange_rate son euros por yen (0,00562), el mismo criterio que usa la
+     pestaña de presupuesto. */
+  const aEuros = (e: any) => {
+    const n = parseFloat(e.cost || 0)
+    if (!n) return 0
+    const cur = e.currency || trip.currency
+    if (cur === trip.exchange_base) return n
+    if (cur === trip.currency) return n * trip.exchange_rate
+    return n
+  }
+  const eur = (n: number) => n.toLocaleString('es-ES', { maximumFractionDigits: 0 })
+
   const budgetEvents = events.filter((e: any) => parseFloat(e.cost || 0) > 0)
-  const totalCost = budgetEvents.reduce((s: number, e: any) => s + parseFloat(e.cost || 0), 0)
+  const totalCost = budgetEvents.reduce((s: number, e: any) => s + aEuros(e), 0)
   const byCat: Record<string, number> = {}
-  budgetEvents.forEach((e: any) => { byCat[e.category] = (byCat[e.category] || 0) + parseFloat(e.cost || 0) })
+  budgetEvents.forEach((e: any) => { byCat[e.category] = (byCat[e.category] || 0) + aEuros(e) })
 
   // Vouchers
   const vouchers: any[] = [
@@ -198,7 +214,16 @@ export default function DossierPage({ params }: { params: { id: string } }) {
                 <td style={{ padding: '6px 12px', fontSize: 10, fontWeight: 500 }}>{ev.title}</td>
                 <td style={{ padding: '6px 12px', fontSize: 9, color: '#888' }}>{CAT[ev.category] || ev.category}</td>
                 <td style={{ padding: '6px 12px', fontSize: 9, color: '#888' }}>{ev.day ? formatDate(ev.day, 'd MMM') : ''}</td>
-                <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 600, fontSize: 10 }}>{parseFloat(ev.cost || 0).toLocaleString()} {ev.currency}</td>
+                {/* El importe en euros, que es el que suma abajo, y debajo lo
+                    que de verdad se paga en el mostrador. */}
+                <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 600, fontSize: 10 }}>
+                  {eur(aEuros(ev))} €
+                  {ev.currency && ev.currency !== trip.exchange_base && (
+                    <div style={{ fontSize: 8, color: '#888', fontWeight: 400 }}>
+                      {parseFloat(ev.cost || 0).toLocaleString('es-ES')} {ev.currency}
+                    </div>
+                  )}
+                </td>
                 <td style={{ padding: '6px 12px', textAlign: 'center' }}>
                   <span className={`tag ${ev.paid ? 'ok' : 'warn'}`}>{ev.paid ? 'Pagado' : 'Pendiente'}</span>
                 </td>
@@ -208,7 +233,7 @@ export default function DossierPage({ params }: { params: { id: string } }) {
           <tfoot>
             <tr style={{ background: '#1e3a5f', color: 'white', fontWeight: 700 }}>
               <td style={{ padding: '8px 12px', fontSize: 11 }} colSpan={3}>TOTAL</td>
-              <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: 12 }}>{totalCost.toLocaleString()} €</td>
+              <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: 12 }}>{eur(totalCost)} €</td>
               <td />
             </tr>
           </tfoot>
@@ -219,7 +244,7 @@ export default function DossierPage({ params }: { params: { id: string } }) {
           {Object.entries(byCat).map(([cat, total]) => (
             <div key={cat} style={{ background: '#f0f4ff', border: '1px solid #c7d2fe', borderRadius: 8, padding: '8px 16px', textAlign: 'center' }}>
               <div style={{ fontSize: 9, color: '#6366f1', marginBottom: 2 }}>{CAT[cat] || cat}</div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f' }}>{total.toLocaleString()} €</div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#1e3a5f' }}>{eur(total as number)} €</div>
             </div>
           ))}
         </div>
