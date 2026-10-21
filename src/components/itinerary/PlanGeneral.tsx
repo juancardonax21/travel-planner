@@ -196,39 +196,54 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
                     && ['shinkansen', 'flight'].includes((e as any).travel_mode))
                   return (
                     <button key={day} onClick={() => onDayClick(day)}
-                      className="w-full text-left flex gap-3 py-1.5 px-2 -mx-2 rounded-lg hover:bg-slate-50 transition-colors">
-                      <span className="font-mono text-xs text-slate-400 w-14 flex-shrink-0 pt-0.5">
-                        {formatDate(day, 'd MMM')}
-                      </span>
-                      <span className="text-sm text-slate-600 leading-snug flex-1 min-w-0">
-                        {largo && (
-                          <span className="inline-flex items-center gap-1 text-blue-700 font-medium mr-1.5">
-                            {(largo as any).travel_mode === 'flight'
-                              ? <Plane size={12} strokeWidth={2} />
-                              : <TrainFront size={12} strokeWidth={2} />}
-                            {largo.title}
-                            {(anclas[day] || tit.length > 0) && ' ·'}
+                      className="w-full text-left flex gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-slate-50 transition-colors">
+                      {/* La fecha y los pasos, juntos y a la izquierda. Antes
+                          los pasos iban al otro extremo de la fila y partían
+                          el párrafo en dos; apilados aquí, el texto se queda
+                          con todo el ancho y las dos cifras del día -cuándo y
+                          cuánto se anda- se leen de una sola mirada. */}
+                      <span className="w-[72px] flex-shrink-0 pt-0.5">
+                        <span className="block font-mono text-xs text-slate-500">
+                          {formatDate(day, 'd MMM')}
+                        </span>
+                        {pasos > 0 && (
+                          <span className="mt-0.5 flex items-center gap-1 font-mono text-[11px] text-slate-400"
+                            title="Aproximado, contando lo que se anda entre sitios y dentro de cada uno">
+                            <Footprints size={10} strokeWidth={1.8} /> {formateaPasos(pasos)}
                           </span>
                         )}
-                        {anclas[day] ? (
-                          /* El ancla ya no es un destello de una línea: cuenta
-                             el día entero. En violeta entero se hacía pesada,
-                             así que el color se queda solo en la chispa. */
-                          <span className="inline-flex items-start gap-1.5 text-slate-700">
-                            <Sparkles size={12} strokeWidth={2} className="flex-shrink-0 mt-[3px] text-violet-500" />
-                            <span>{anclas[day]}</span>
-                          </span>
-                        ) : (tit.length > 0 ? tit.join(', ') : (largo ? '' : respaldo(evs)))}
                       </span>
-                      {/* Los pasos son de cada jornada: sumados por ciudad no
-                          dicen nada, porque lo que se quiere saber es si un
-                          día concreto va a ser una paliza. */}
-                      {pasos > 0 && (
-                        <span className="font-mono text-xs text-slate-400 flex-shrink-0 pt-0.5 inline-flex items-center gap-1"
-                          title="Aproximado, contando lo que se anda entre sitios y dentro de cada uno">
-                          <Footprints size={11} strokeWidth={1.8} /> {formateaPasos(pasos)}
+                      <span className="flex-1 min-w-0">
+                        {/* Un titular por día, sacado de lo más gordo que se
+                            hace: el viaje se hojea por aquí, y una fila de
+                            texto gris corrido no se hojea. */}
+                        <span className="block text-sm font-semibold text-slate-800 leading-snug">
+                          {largo && (
+                            <span className="inline-flex items-center gap-1 text-blue-700 mr-1">
+                              {(largo as any).travel_mode === 'flight'
+                                ? <Plane size={12} strokeWidth={2} />
+                                : <TrainFront size={12} strokeWidth={2} />}
+                              {largo.title}
+                              {tit.length > 0 && <span className="text-slate-300 mx-0.5">·</span>}
+                            </span>
+                          )}
+                          {/* Separados por punto y no por «y»: los títulos ya
+                              traen sus propias conjunciones dentro -«Ninenzaka,
+                              Yasaka y Gion»- y encadenarlos con otra «y» se lee
+                              como una sola frase mal hecha. */}
+                          {tit.length > 0 ? tit.slice(0, 2).join(' · ') : (largo ? '' : respaldo(evs))}
                         </span>
-                      )}
+                        {/* Debajo, lo que cuenta el día: el ancla si está
+                            escrita, y si no, lo que quede de actividades. */}
+                        {(anclas[day] || tit.length > 2) && (
+                          <span className="mt-0.5 flex items-start gap-1.5 text-sm text-slate-600 leading-snug">
+                            {anclas[day] && (
+                              <Sparkles size={12} strokeWidth={2} className="flex-shrink-0 mt-[3px] text-violet-500" />
+                            )}
+                            <span>{anclas[day] || tit.slice(2).join(', ')}</span>
+                          </span>
+                        )}
+                      </span>
                     </button>
                   )
                 })}
