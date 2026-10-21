@@ -1,13 +1,14 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Plus, Pencil, Trash2, Map, X, Sparkles, Plane, Phone, CreditCard, BedDouble, Compass, UtensilsCrossed, Car, Tag, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, LucideIcon, Bike, Bus, Footprints, Waves, TrainFront, FileCheck2, Banknote, ChevronRight, PlayCircle, Lightbulb, ListChecks, Camera, ShoppingBag } from 'lucide-react'
+import { Plus, Pencil, Trash2, Map, Sparkles, Plane, Phone, CreditCard, BedDouble, Car, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, Footprints, FileCheck2, Banknote, ChevronRight, PlayCircle, Lightbulb, ListChecks, Camera, ShoppingBag } from 'lucide-react'
 import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
 import { formatDate, CAT_CONFIG, formatCurrency } from '@/lib/utils'
 import { fetchWeather, weatherEmoji, type WeatherDay } from '@/lib/weather'
 import dynamic from 'next/dynamic'
-import WeekView, { MODE_LABEL } from '@/components/itinerary/WeekView'
+import WeekView from '@/components/itinerary/WeekView'
+import { eventIcon, etiquetaEvento, MODE_LABEL } from '@/components/itinerary/iconos'
 import { planDe, tituloSinPlan } from '@/lib/planes'
 import VideoModal from '@/components/itinerary/VideoModal'
 import { fotoDeSitio } from '@/lib/foto'
@@ -23,31 +24,6 @@ import LocationPicker from '@/components/itinerary/LocationPicker'
 const DayMap = dynamic(() => import('@/components/map/DayMap'), { ssr: false })
 
 
-// Category icon components (Lucide)
-const CAT_ICONS: Record<string, LucideIcon> = {
-  transport: Car,
-  hotel: BedDouble,
-  activity: Compass,
-  meal: UtensilsCrossed,
-  other: Tag,
-}
-
-function CategoryIcon({ category, size = 16, className = '' }: { category: string; size?: number; className?: string }) {
-  const Icon = CAT_ICONS[category] || Tag
-  return <Icon size={size} strokeWidth={1.8} className={className} />
-}
-
-function CategoryBadge({ category }: { category: string }) {
-  const cfg = CAT_CONFIG[category as keyof typeof CAT_CONFIG] || CAT_CONFIG.other
-  const Icon = CAT_ICONS[category] || Tag
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full"
-      style={{ background: cfg.bg, color: cfg.color }}>
-      <Icon size={11} strokeWidth={2} />
-      {cfg.label}
-    </span>
-  )
-}
 
 type Segment = {
   from: string; to: string; flight_number: string; airline: string
@@ -1542,36 +1518,29 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                 return (
                   <div key={ev.id} className="card overflow-hidden group">
                     {/* Main content */}
-                    <div className="flex gap-3 p-4 pb-3">
+                    <div className="flex gap-3 p-4">
                       <div className="flex flex-col items-center pt-0.5 min-w-[44px]">
                         <span className="text-xs font-mono text-slate-400">{ev.time?.slice(0,5)}</span>
                         {ev.category !== 'hotel' && e.end_time && e.end_time.slice(0,5) !== ev.time?.slice(0,5) && (
                           <span className="text-[10px] font-mono text-slate-300">↓ {e.end_time.slice(0,5)}</span>
                         )}
+                        {/* El icono es lo único que queda a la izquierda, y por eso
+                            carga con decir de qué va el evento: sale del mismo
+                            sitio que en la cuadrícula, así que el metro lleva su
+                            símbolo aquí también. El nombre va en el title, para
+                            quien dude, y no en una etiqueta repetida al lado. */}
                         <div className="mt-1.5 w-9 h-9 rounded-xl flex items-center justify-center"
-                          style={{background: cfg.bg}}>
-                          {(() => { 
-                            // Mapear travel_mode a icono específico
-                            let Icon = Tag
-                            if (ev.category === 'transport') {
-                              if (ev.travel_mode === 'flight') Icon = Plane
-                              else if (ev.travel_mode === 'driving') Icon = Car
-                              else if (ev.travel_mode === 'walking') Icon = Footprints
-                              else if (ev.travel_mode === 'bicycling') Icon = Bike
-                              else if (ev.travel_mode === 'train') Icon = TrainFront
-                              else if (ev.travel_mode === 'transit') Icon = Bus
-                              else if (ev.travel_mode === 'boat') Icon = Waves
-                            } else {
-                              Icon = CAT_ICONS[ev.category] || Tag
-                            }
-                            return <Icon size={17} strokeWidth={1.8} style={{color: cfg.color}} /> 
+                          style={{background: cfg.bg}} title={etiquetaEvento(ev)}>
+                          {(() => {
+                            const Icon = eventIcon(ev)
+                            return <Icon size={17} strokeWidth={1.8} style={{color: cfg.color}} />
                           })()}
                         </div>
                       </div>
                       <div className="w-px bg-slate-100 self-stretch" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
+                        <div className="min-w-0">
+                          <div className="min-w-0">
                             {/* Abre la ficha, igual que en la cuadrícula. Solo el
                                 título: la tarjeta lleva dentro enlaces y botones
                                 propios y no puede ser toda ella un botón. */}
@@ -1675,14 +1644,71 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                               </div>
                             )}
                           </div>
-                          {/* Edit/delete — hover */}
-                          <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                            <CategoryBadge category={ev.category} />
+                          {/* Una sola fila debajo del texto: primero lo que hace
+                              falta saber del evento, luego los enlaces y al final el
+                              lápiz. Antes esto estaba repartido entre la derecha de
+                              la tarjeta y una franja aparte al pie, y eran tres sitios
+                              distintos donde mirar. Junto se lee de un golpe, y el
+                              texto gana el ancho entero, que en el móvil es la
+                              diferencia entre leerlo y adivinarlo. */}
+                          <div className="flex items-center flex-wrap gap-1.5 mt-2.5">
                             {e.fixed_time && (
-                              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200"
+                              <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200"
                                 title="Fecha u hora que no admite cambio">
-                                <AlertTriangle size={10} strokeWidth={2} /> Fijo
+                                <AlertTriangle size={11} strokeWidth={2} /> Fijo
                               </span>
+                            )}
+                            {/* El importe no sale aquí: el plan se lee por lo que se
+                                hace, y el dinero se mira entero en el presupuesto.
+                                Se queda si está pagado o no, que es un recado del
+                                viaje —"esto hay que pagarlo allí"— y no un precio. */}
+                            {ev.cost > 0 && veCostes && (
+                              <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border ${
+                                e.paid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'
+                              }`}>{e.paid ? '✓ Pagado' : '○ Pendiente'}</span>
+                            )}
+                            {e.accom_cancel_date && (() => {
+                              const d = Math.ceil((new Date(e.accom_cancel_date).getTime() - new Date().getTime()) / 86400000)
+                              const urgent = d <= 14
+                              return (
+                                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${
+                                  urgent
+                                    ? 'bg-red-50 text-red-700 border-red-200'
+                                    : 'bg-violet-50 text-violet-700 border-violet-200'
+                                }`} title={e.accom_cancel_fee ? `Cancelación gratuita hasta esta fecha. Después: ${e.accom_cancel_fee}` : 'Fecha límite cancelación gratuita'}>
+                                  <Shield size={11} strokeWidth={2} /> Cancel. {formatDate(e.accom_cancel_date, 'd MMM')}
+                                </span>
+                              )
+                            })()}
+                            {e.ticket_url && (
+                              <a href={e.ticket_url} target="_blank" rel="noopener"
+                                className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors">
+                                <Ticket size={11} strokeWidth={2} /> Billetes
+                              </a>
+                            )}
+                            {e.confirmation_url && (
+                              <a href={e.confirmation_url} target="_blank" rel="noopener"
+                                className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full text-sky-700 bg-sky-50 border border-sky-200 hover:bg-sky-100 transition-colors">
+                                <FileCheck2 size={11} strokeWidth={2} /> Confirmación
+                              </a>
+                            )}
+                            {e.accom_web && (
+                              <a href={e.accom_web} target="_blank" rel="noopener"
+                                className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors">
+                                <Ticket size={11} strokeWidth={2} /> Ver reserva
+                              </a>
+                            )}
+                            {e.url && !e.ticket_url && !e.accom_web && (
+                              <a href={e.url} target="_blank" rel="noopener"
+                                className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors">
+                                <Ticket size={11} strokeWidth={2} /> {safeHost(e.url)}
+                              </a>
+                            )}
+                            {e.insurance_url && (
+                              <a href={e.insurance_url} target="_blank" rel="noopener"
+                                className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full text-violet-700 bg-violet-50 border border-violet-200 hover:bg-violet-100 transition-colors">
+                                <Shield size={11} strokeWidth={2} /> Seguro
+                              </a>
                             )}
                             {ev.category === 'transport' && ev.travel_mode === 'flight' && tripMembers.length > 0 && (
                               <DocStatusBadge
@@ -1691,7 +1717,9 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                                 destination={trip.destination}
                               />
                             )}
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* En el móvil no hay hover: si se esconde, no se puede
+                                tocar. Se esconde solo donde hay ratón. */}
+                            <div className="flex gap-1 ml-auto opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                               <button onClick={() => openEdit(ev)} className="text-slate-300 hover:text-blue-500 p-1.5 rounded-lg hover:bg-blue-50 transition-colors"><Pencil size={13} /></button>
                               <button onClick={() => handleDelete(ev.id)} className="text-slate-300 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors"><Trash2 size={13} /></button>
                             </div>
@@ -1700,68 +1728,6 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       </div>
                     </div>
 
-                    {/* Footer strip: cost + links + cancel warning */}
-                    {((ev.cost > 0 && veCostes) || e.ticket_url || e.confirmation_url || e.insurance_url || e.url || e.accom_web || e.accom_cancel_date) && (
-                      <div className="border-t border-slate-100 bg-slate-50">
-
-                        {/* Actions row */}
-                        <div className="flex items-center gap-3 px-4 py-2.5">
-                          {/* El importe no sale aquí: el plan se lee por lo que se
-                              hace, y el dinero se mira entero en el presupuesto.
-                              Se queda si está pagado o no, que es un recado del
-                              viaje —"esto hay que pagarlo allí"— y no un precio. */}
-                          {ev.cost > 0 && veCostes && (
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full border mr-auto ${
-                              e.paid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'
-                            }`}>{e.paid ? '✓ Pagado' : '○ Pendiente'}</span>
-                          )}
-                          {/* Right: 1st primary access links, 2nd seguro, 3rd cancel */}
-                          {e.ticket_url && (
-                            <a href={e.ticket_url} target="_blank" rel="noopener"
-                              className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl hover:bg-emerald-100 transition-colors font-medium">
-                              <Ticket size={12} strokeWidth={2} /> Billetes
-                            </a>
-                          )}
-                          {e.confirmation_url && (
-                            <a href={e.confirmation_url} target="_blank" rel="noopener"
-                              className="flex items-center gap-1.5 text-xs text-sky-700 bg-sky-50 border border-sky-200 px-3 py-1.5 rounded-xl hover:bg-sky-100 transition-colors font-medium">
-                              <FileCheck2 size={12} strokeWidth={2} /> Confirmación
-                            </a>
-                          )}
-                          {e.accom_web && (
-                            <a href={e.accom_web} target="_blank" rel="noopener"
-                              className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl hover:bg-emerald-100 transition-colors font-medium">
-                              <Ticket size={12} strokeWidth={2} /> Ver reserva
-                            </a>
-                          )}
-                          {e.url && !e.ticket_url && !e.accom_web && (
-                            <a href={e.url} target="_blank" rel="noopener"
-                              className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl hover:bg-emerald-100 transition-colors font-medium">
-                              <Ticket size={12} strokeWidth={2} /> {safeHost(e.url)}
-                            </a>
-                          )}
-                          {e.insurance_url && (
-                            <a href={e.insurance_url} target="_blank" rel="noopener"
-                              className="flex items-center gap-1.5 text-xs text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1.5 rounded-xl hover:bg-violet-100 transition-colors font-medium">
-                              <Shield size={12} strokeWidth={2} /> Seguro
-                            </a>
-                          )}
-                          {e.accom_cancel_date && (() => {
-                            const d = Math.ceil((new Date(e.accom_cancel_date).getTime() - new Date().getTime()) / 86400000)
-                            const urgent = d <= 14
-                            return (
-                              <span className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border font-medium ${
-                                urgent
-                                  ? 'bg-red-50 text-red-700 border-red-200'
-                                  : 'bg-violet-50 text-violet-700 border-violet-200'
-                              }`} title={e.accom_cancel_fee ? `Cancelación gratuita hasta esta fecha. Después: ${e.accom_cancel_fee}` : 'Fecha límite cancelación gratuita'}>
-                                <Shield size={11} strokeWidth={2} /> Cancel. {formatDate(e.accom_cancel_date, 'd MMM')}
-                              </span>
-                            )
-                          })()}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )
               })}
