@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import type { Trip } from '@/types'
 import { daysUntil, formatDate } from '@/lib/utils'
 import {
-  CalendarDays, CreditCard, Settings2, Printer, ChevronLeft, BookHeart,
+  CalendarDays, CreditCard, Settings2, Printer, ChevronLeft, BookHeart, ListChecks,
 } from 'lucide-react'
 import { useRolViaje } from '@/lib/rolViaje'
 
@@ -24,6 +24,10 @@ const NAV_ITEMS = [
   { key: 'itinerary', label: 'Itinerario',  corto: 'Plan',    Icon: CalendarDays },
   // El diario va pegado al plan: es el mismo viaje contado después.
   { key: 'diario',    label: 'Diario',      corto: 'Diario',  Icon: BookHeart },
+  // Preparar estaba dos niveles dentro de Ajustes, y ahí viven los requisitos
+  // de entrada: el QR, el seguro, qué no meter en la maleta. Mientras falten
+  // cosas por cerrar es de lo que más se mira, así que sale a la barra.
+  { key: 'prepare',   label: 'Preparar',    corto: 'Preparar', Icon: ListChecks },
   { key: 'budget',    label: 'Presupuesto', corto: 'Gastos',  Icon: CreditCard },
   // Las dos últimas van solo con icono: son accesorias y no merecen el
   // ancho de una etiqueta.

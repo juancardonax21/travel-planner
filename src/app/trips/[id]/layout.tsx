@@ -19,7 +19,7 @@ export default function TripLayout({ children, params }:
   const seccion = (ruta || '').split('/')[3] || 'itinerary'
   // Documentos, Viajeros y Preparar viven dentro de Ajustes: estando en una
   // de ellas, la pestaña que se marca es Ajustes.
-  const DENTRO_DE_AJUSTES = ['documents', 'travelers', 'prepare']
+  const DENTRO_DE_AJUSTES = ['documents', 'travelers']
   const activa = DENTRO_DE_AJUSTES.includes(seccion) ? 'settings' : seccion
 
   useEffect(() => {

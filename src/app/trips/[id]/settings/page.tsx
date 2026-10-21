@@ -225,7 +225,7 @@ export default function TripSettingsPage({ params }: { params: { id: string } })
         <div className="card p-2 mb-4">
           {[
             { href: 'documents', Icon: FolderOpen, titulo: 'Documentos', pie: 'Reservas, vouchers y billetes' },
-            { href: 'prepare',   Icon: Sparkles,   titulo: 'Preparar',   pie: 'Listas de equipaje y recados' },
+            { href: 'prepare',   Icon: Sparkles,   titulo: 'Preparar',   pie: 'Requisitos de entrada, imprescindibles y qué no llevar' },
           ].map(({ href, Icon, titulo, pie }) => (
             <Link key={href} href={`/trips/${id}/${href}`}
               className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors">

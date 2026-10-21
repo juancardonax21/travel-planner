@@ -3,8 +3,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatDate } from '@/lib/utils'
 import { useRolViaje } from '@/lib/rolViaje'
-import { Plane, BedDouble, Ticket, Car, UtensilsCrossed, FileText, MapPin, CreditCard, CheckCircle2, AlertTriangle, Circle, CalendarDays, Users, Tag } from 'lucide-react'
+import { Plane, BedDouble, Ticket, Car, UtensilsCrossed, FileText, MapPin, CreditCard, CheckCircle2, AlertTriangle, Circle, CalendarDays, Users, Tag, ChevronLeft, Printer } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+import Link from 'next/link'
 
 export default function DossierPage({ params }: { params: { id: string } }) {
   const { veCostes } = useRolViaje(params?.id)
@@ -33,14 +34,6 @@ export default function DossierPage({ params }: { params: { id: string } }) {
     setMemberDocs(md || [])
     setLoading(false)
   }
-
-  // Print only when all data is loaded
-  useEffect(() => {
-    if (!loading && trip && events.length >= 0) {
-      const t = setTimeout(() => window.print(), 800)
-      return () => clearTimeout(t)
-    }
-  }, [loading, trip, events])
 
   if (loading) return (
     <div style={{ fontFamily: 'system-ui', padding: 60, textAlign: 'center', color: '#888' }}>
@@ -105,6 +98,29 @@ export default function DossierPage({ params }: { params: { id: string } }) {
 
   return (
     <div style={{ fontFamily: '"Helvetica Neue", Arial, sans-serif', fontSize: 10, color: '#1a1a1a', maxWidth: 860, margin: '0 auto' }}>
+      {/* El dossier se dibuja sin la cabecera de la app para que no salga en
+          el papel, y eso lo dejaba sin salida: una vez dentro, no había forma
+          de volver al viaje. Esta barra es la puerta, y no se imprime.
+          Tampoco se imprime solo al entrar, como hacía antes: ahora se mira
+          primero y se imprime cuando uno quiere. */}
+      <div className="sin-imprimir" style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 12, padding: '12px 0', marginBottom: 8, borderBottom: '1px solid #e5e7eb',
+      }}>
+        <Link href={`/trips/${id}/itinerary`} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
+          color: '#475569', textDecoration: 'none', fontWeight: 500,
+        }}>
+          <ChevronLeft size={16} strokeWidth={2} /> Volver al viaje
+        </Link>
+        <button onClick={() => window.print()} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
+          background: '#2563eb', color: '#fff', border: 0, borderRadius: 10,
+          padding: '8px 16px', fontWeight: 600, cursor: 'pointer',
+        }}>
+          <Printer size={15} strokeWidth={2} /> Imprimir
+        </button>
+      </div>
       <style>{`
         @page { margin: 15mm; size: A4; }
         @media print {
