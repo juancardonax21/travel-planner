@@ -86,7 +86,7 @@ export default function DossierPage({ params }: { params: { id: string } }) {
     ...events.filter(e => e.insurance_url).map(e => ({ name: `Seguro — ${e.title}`, url: e.insurance_url, date: e.day, type: 'Seguro' })),
     ...events.filter(e => e.category === 'hotel' && e.accom_web).map(e => ({ name: e.title, url: e.accom_web, date: e.accom_checkin_date, type: 'Alojamiento' })),
     ...docs.filter(d => d.url).map(d => ({ name: d.name, url: d.url, date: null, type: d.category })),
-    ...memberDocs.filter(d => d.file_url).map(d => ({ name: `${d.label} — ${d.family_member?.name?.split(' ')[0] || ''}`, url: d.file_url, date: null, type: 'Billete' })),
+    ...memberDocs.filter(d => d.file_url && d.type !== 'qr').map(d => ({ name: `${d.label} — ${d.family_member?.name?.split(' ')[0] || ''}`, url: d.file_url, date: null, type: 'Billete' })),
   ]
 
   const CAT: Record<string, string> = {
@@ -275,6 +275,32 @@ export default function DossierPage({ params }: { params: { id: string } }) {
                   </div>
                   <div style={{ fontSize: 7, color: '#a5b4fc', wordBreak: 'break-all', lineHeight: 1.4 }}>{v.url}</div>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── QR DE ENTRADA ──────────────────────────────────── */}
+      {/* Van impresos a propósito. El código se enseña desde una pantalla en
+          el quiosco de aduanas, pero el papel no se queda sin batería ni
+          depende del wifi de Narita, que es irregular justo donde hace falta.
+          Uno por persona: el de cada niño no sirve en el móvil de su padre. */}
+      {memberDocs.some((d: any) => d.type === 'qr' && d.file_url) && (
+        <div className="pb" style={{ padding: '20px 0' }}>
+          <h2>Códigos QR de entrada — Visit Japan Web</h2>
+          <p style={{ fontSize: 10, color: '#666', margin: '0 0 14px' }}>
+            Uno por viajero, válido para inmigración y aduanas a la vez. Se enseña al llegar a Narita.
+            Si cambia algo del vuelo hay que volver a generarlos: estos dejarían de servir.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            {memberDocs.filter((d: any) => d.type === 'qr' && d.file_url).map((d: any) => (
+              <div key={d.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, textAlign: 'center', breakInside: 'avoid' }}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: '#1e3a5f', marginBottom: 8 }}>
+                  {d.family_member?.name || ''}
+                </div>
+                {/* 45 mm: por debajo de eso los lectores empiezan a fallar. */}
+                <img src={d.file_url} alt="" style={{ width: '45mm', height: '45mm', imageRendering: 'pixelated' }} />
               </div>
             ))}
           </div>
