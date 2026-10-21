@@ -18,21 +18,36 @@ import { LINEAS } from './LineaTren'
  */
 
 export type Tramo = {
-  linea: string            // clave de LINEAS
-  direccion: string        // el terminus del cartel del andén
+  linea?: string           // clave de LINEAS, cuando la hay
+  nombre?: string          // para lo que no está en la tabla: «Bus 206»
+  codigo?: string          // lo que va dentro del círculo
+  color?: string
+  operador?: string
+  direccion: string        // el terminus del cartel del andén, o el destino del bus
   desde: string
   hasta: string
   paradas?: string[]       // intermedias, sin incluir desde ni hasta
   minutos?: number
 }
 
-function Chapa({ clave }: { clave: string }) {
-  const l = LINEAS[clave]
-  if (!l) return null
+/* De un tramo se saca su identidad: la de la tabla si tiene clave, y si no
+   la que traiga escrita. Los buses urbanos no tienen código de línea ni color
+   oficial que valga para todos, pero sí número, que es lo que se mira. */
+function pinta(t: Tramo) {
+  const l = t.linea ? LINEAS[t.linea] : undefined
+  return {
+    nombre: l ? `Línea ${l.nombre}` : (t.nombre || ''),
+    codigo: l ? l.codigo : (t.codigo || '·'),
+    color: l ? l.color : (t.color || '#64748B'),
+    operador: l ? l.operador : (t.operador || ''),
+  }
+}
+
+function Chapa({ codigo, color }: { codigo: string; color: string }) {
   return (
     <span className="flex items-center justify-center rounded-full text-white font-bold flex-shrink-0"
-      style={{ background: l.color, width: 24, height: 24, fontSize: l.codigo.length > 1 ? 9 : 12 }}>
-      {l.codigo}
+      style={{ background: color, width: 24, height: 24, fontSize: codigo.length > 2 ? 8 : codigo.length > 1 ? 9 : 12 }}>
+      {codigo}
     </span>
   )
 }
@@ -65,16 +80,16 @@ export default function Trayecto({ tramos }: { tramos: Tramo[] }) {
       </div>
 
       {tramos.map((t, i) => {
-        const l = LINEAS[t.linea]
-        const color = l?.color || '#94A3B8'
+        const d = pinta(t)
+        const color = d.color
         return (
           <div key={i} className={i > 0 ? 'mt-1' : ''}>
             {/* rótulo del tramo */}
             <div className="flex items-center gap-2 mb-1">
-              <Chapa clave={t.linea} />
+              <Chapa codigo={d.codigo} color={color} />
               <span className="min-w-0">
                 <span className="block text-[13px] font-semibold text-slate-800 leading-tight">
-                  {l ? `Línea ${l.nombre}` : t.linea}
+                  {d.nombre}
                 </span>
                 <span className="block text-[11px] text-slate-500 leading-tight">
                   dirección {t.direccion}

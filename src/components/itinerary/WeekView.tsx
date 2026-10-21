@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 import type { Trip, Event } from '@/types'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
 import { planDe, tituloSinPlan } from '@/lib/planes'
+import IconoMetro from './IconoMetro'
 
 import {
   Plane, BedDouble, Compass, UtensilsCrossed, Car, Tag, Bike, Bus, Footprints,
-  TrainFront, TrainFrontTunnel, Train, Ship, CheckCircle2, Banknote, AlertTriangle, Info, Footprints as Pie, LucideIcon,
+  TrainFront, Train, Ship, CheckCircle2, Banknote, AlertTriangle, Info, Footprints as Pie, LucideIcon,
 } from 'lucide-react'
 
 /* Rejilla de planning: columnas = días, filas = tramos de 30 min.
@@ -57,8 +58,12 @@ const CAT_LABEL: Record<string, string> = {
 
 // Un icono por medio de transporte. El morro del TrainFront es el shinkansen;
 // el tren en túnel, el metro; el de vagones, el cercanías.
-const MODE_ICON: Record<string, LucideIcon> = {
-  flight: Plane, shinkansen: TrainFront, train: Train, metro: TrainFrontTunnel,
+/* El metro no lleva icono de lucide: a doce píxeles el tren en túnel no se
+   distinguía del de cercanías. Va la M en un círculo, que es símbolo de metro
+   en medio mundo y a ese tamaño se reconoce por la silueta. */
+type IconoLista = LucideIcon | typeof IconoMetro
+const MODE_ICON: Record<string, IconoLista> = {
+  flight: Plane, shinkansen: TrainFront, train: Train, metro: IconoMetro,
   bus: Bus, walking: Footprints, driving: Car, bicycling: Bike, boat: Ship,
   transit: Bus,
 }
@@ -71,7 +76,7 @@ const CAT_ICON: Record<string, LucideIcon> = {
   hotel: BedDouble, activity: Compass, meal: UtensilsCrossed, other: Tag,
 }
 
-function eventIcon(ev: Event): LucideIcon {
+function eventIcon(ev: Event): IconoLista {
   if (ev.category === 'transport') return MODE_ICON[(ev as any).travel_mode] || Car
   return CAT_ICON[ev.category] || Tag
 }

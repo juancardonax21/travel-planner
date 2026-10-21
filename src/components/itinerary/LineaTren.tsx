@@ -35,6 +35,7 @@ export const LINEAS: Record<string, Linea> = {
   sakaisuji:   { nombre: 'Sakaisuji',   codigo: 'K', color: '#814721', operador: 'Osaka Metro' },
   sennichimae: { nombre: 'Sennichimae', codigo: 'S', color: '#E44D93', operador: 'Osaka Metro' },
   // JR y privadas de las que no doy color: gris, con el nombre entero
+  tokaido:     { nombre: 'Tokaido Shinkansen', codigo: 'JR', color: '#64748B', operador: 'JR Central' },
   jr_chuo:     { nombre: 'JR Chuo',     codigo: 'JR', color: '#64748B', operador: 'JR East' },
   jr_yamanote: { nombre: 'JR Yamanote', codigo: 'JR', color: '#64748B', operador: 'JR East' },
   jr_nara:     { nombre: 'JR Nara',     codigo: 'JR', color: '#64748B', operador: 'JR West' },
