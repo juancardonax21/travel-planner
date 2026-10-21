@@ -15,6 +15,7 @@ import { fotoDeSitio } from '@/lib/foto'
 import Ilustracion, { seIlustra } from '@/components/itinerary/Ilustracion'
 import LineaTren from '@/components/itinerary/LineaTren'
 import Trayecto from '@/components/itinerary/Trayecto'
+import CampoCrece from '@/components/itinerary/CampoCrece'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import PlanGeneral from '@/components/itinerary/PlanGeneral'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
@@ -1431,10 +1432,10 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
               </div>
             )}
 
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-slate-800 capitalize">
-                {formatDate(selDay, 'EEEE, d MMMM')}
-              </h2>
+            {/* Sin titular de fecha: el día ya está dicho, y en grande, en la
+                tira de arriba. Repetirlo debajo solo gastaba una línea de
+                pantalla, que en el móvil es cara. */}
+            <div className="flex items-center justify-end mb-4">
               <div className="flex gap-2">
                 {eventsWithCoords.length > 0 && (
                   <a href={`https://www.google.com/maps/dir/${eventsWithCoords.map(e => `${e.lat},${e.lng}`).join('/')}`}
@@ -1453,7 +1454,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                 es el motivo de que el día esté en el viaje. */}
             <div className="bg-violet-50 border border-violet-200 rounded-2xl p-3 mb-3">
               <div className="text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1 flex items-center gap-1.5"><Sparkles size={11} strokeWidth={2} /> El ancla del día</div>
-              <textarea className="w-full bg-transparent text-sm text-violet-900 resize-none focus:outline-none min-h-[40px] leading-snug"
+              <CampoCrece className="w-full bg-transparent text-sm text-violet-900 focus:outline-none leading-snug"
                 placeholder="¿Qué es lo que no se olvida de este día?"
                 defaultValue={anclas[selDay] || ''}
                 key={'ancla-' + selDay}
@@ -1462,9 +1463,13 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
 
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
               <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1 flex items-center gap-1.5"><NotebookPen size={11} strokeWidth={2} /> Notas del día</div>
-              <textarea className="w-full bg-transparent text-sm text-slate-700 resize-none focus:outline-none min-h-[40px]"
+              {/* La key, como en el ancla: sin ella el campo se quedaba con el
+                  texto del día anterior al cambiar de día, y al tocarlo lo
+                  guardaba en el día equivocado. */}
+              <CampoCrece className="w-full bg-transparent text-sm text-slate-700 focus:outline-none"
                 placeholder="Escribe una nota para este día..."
                 defaultValue={dayNotes[selDay] || ''}
+                key={'nota-' + selDay}
                 onBlur={e => { if (e.target.value !== (dayNotes[selDay] || '')) saveNote(selDay, e.target.value) }} />
             </div>
 
