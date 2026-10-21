@@ -87,6 +87,12 @@ export default function PreparePage({ params }: { params: { id: string } }) {
 
   async function fetchRequirements() {
     if (!trip) return
+    /* Esta lista se llena a mano con cosas comprobadas -fechas de caducidad
+       reales, teléfonos, ventanas de venta- y el botón la sustituye entera por
+       lo que diga la IA. Que sea a propósito y no de un clic de más. */
+    if (reqs?.length && !confirm(
+      'Esto reemplaza los requisitos actuales por una lista nueva generada con IA. '
+      + 'Lo que haya escrito a mano se pierde. ¿Seguir?')) return
     setLoadingReqs(true)
     try {
       const travelerInfo = travelers.map(t => {
