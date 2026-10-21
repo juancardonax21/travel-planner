@@ -11,7 +11,7 @@ import WeekView from '@/components/itinerary/WeekView'
 import { eventIcon, etiquetaEvento, MODE_LABEL } from '@/components/itinerary/iconos'
 import { planDe, tituloSinPlan } from '@/lib/planes'
 import VideoModal from '@/components/itinerary/VideoModal'
-import { fotoDeSitio } from '@/lib/foto'
+import FotoSitio from '@/components/itinerary/FotoSitio'
 import Ilustracion, { seIlustra } from '@/components/itinerary/Ilustracion'
 import LineaTren from '@/components/itinerary/LineaTren'
 import Trayecto from '@/components/itinerary/Trayecto'
@@ -1202,7 +1202,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       )}
                       {/* Sin vídeo pero con sitio: el hotel, o dónde se come. */}
                       {!e.video_id && e.foto_ref && (
-                        <img src={fotoDeSitio(e.foto_ref) || ''} alt=""
+                        <FotoSitio refFoto={e.foto_ref}
                           className="mt-3 w-full aspect-video object-cover rounded-xl bg-slate-100" />
                       )}
                       {/* Ni vídeo ni sitio: está por decidir, y se dibuja. */}

@@ -1,6 +1,6 @@
 'use client'
 import { formatDate } from '@/lib/utils'
-import { fotoDeSitio } from '@/lib/foto'
+import FotoSitio from '@/components/itinerary/FotoSitio'
 import { tituloSinPlan } from '@/lib/planes'
 import type { Voz } from '@/lib/voces'
 import { BookHeart, Heart, Printer, Sparkles } from 'lucide-react'
@@ -76,7 +76,7 @@ export default function Diario({ trip, dias }:
                     </div>
 
                     {ev.foto_ref && (
-                      <img src={fotoDeSitio(ev.foto_ref) || ''} alt=""
+                      <FotoSitio refFoto={ev.foto_ref}
                         className="w-full aspect-video object-cover rounded-xl bg-slate-100 mb-2" />
                     )}
 

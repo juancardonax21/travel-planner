@@ -6,7 +6,7 @@ import { pasosDelDia, formateaPasos } from '@/lib/pasos'
 import { MapPin, BedDouble, Footprints, Plane, TrainFront, Sparkles, PlayCircle } from 'lucide-react'
 import { tituloSinPlan } from '@/lib/planes'
 import VideoModal from './VideoModal'
-import { fotoDeSitio } from '@/lib/foto'
+import FotoSitio from './FotoSitio'
 import Ilustracion, { seIlustra } from './Ilustracion'
 
 /* Plan general: el viaje leído de un vistazo.
@@ -168,7 +168,7 @@ export default function PlanGeneral({ trip, events, days, onDayClick, anclas = {
                     {/* Sin play: son fotos, no se abren. Solo enseñan el sitio. */}
                     {fotos.map(e => (
                       <div key={e.id} className={marco}>
-                        <img src={fotoDeSitio((e as any).foto_ref, 400) || ''} alt="" loading="lazy"
+                        <FotoSitio refFoto={(e as any).foto_ref} ancho={400}
                           className="w-full aspect-video object-cover opacity-90" />
                         <span className={velo} />
                         <span className={pie}>{tituloSinPlan(e)}</span>
