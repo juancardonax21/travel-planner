@@ -17,6 +17,8 @@ import LineaTren from '@/components/itinerary/LineaTren'
 import Trayecto from '@/components/itinerary/Trayecto'
 import CampoCrece from '@/components/itinerary/CampoCrece'
 import Voces from '@/components/itinerary/Voces'
+import IconoPokeball from '@/components/itinerary/IconoPokeball'
+import BloqueCaza from '@/components/itinerary/Caza'
 import BotonCompartir from '@/components/itinerary/BotonCompartir'
 import { useVoces, useYo } from '@/lib/voces'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
@@ -1262,6 +1264,8 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       entero —de dónde se sale, por dónde se pasa, dónde se
                       baja—; si solo tenemos la línea, al menos su chapa, que
                       en el andén se busca el color y la letra, no el nombre. */}
+                  {e.practico?.caza && <BloqueCaza caza={e.practico.caza} />}
+
                   {e.practico?.trayecto?.length ? (
                     <Trayecto tramos={e.practico.trayecto} />
                   ) : e.practico?.linea ? (
@@ -1584,6 +1588,12 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                                 propios y no puede ser toda ella un botón. */}
                             <button type="button" onClick={() => setDetalle(ev)}
                               className="group/t flex items-start gap-1.5 text-left">
+                              {/* Lo único en color de toda la lista, y sale en cuatro
+                                  eventos de ciento cincuenta: por eso se ve. */}
+                              {e.practico?.caza && (
+                                <IconoPokeball size={17} className="mt-0.5 flex-shrink-0"
+                                  style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,.15))' }} />
+                              )}
                               <h3 className="font-semibold text-slate-900 group-hover/t:text-blue-700 transition-colors">
                                 {tituloSinPlan(ev)}
                               </h3>
