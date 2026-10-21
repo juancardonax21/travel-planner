@@ -13,6 +13,7 @@ import VideoModal from '@/components/itinerary/VideoModal'
 import { fotoDeSitio } from '@/lib/foto'
 import Ilustracion, { seIlustra } from '@/components/itinerary/Ilustracion'
 import LineaTren from '@/components/itinerary/LineaTren'
+import Trayecto from '@/components/itinerary/Trayecto'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import PlanGeneral from '@/components/itinerary/PlanGeneral'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
@@ -1270,13 +1271,17 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                     </div>
                   )}
 
-                  {/* La línea que hay que coger, antes que nada: en el andén
-                      se busca el color y la letra, no el nombre. */}
-                  {e.practico?.linea && (
+                  {/* El viaje, antes que nada. Si están las paradas se dibuja
+                      entero —de dónde se sale, por dónde se pasa, dónde se
+                      baja—; si solo tenemos la línea, al menos su chapa, que
+                      en el andén se busca el color y la letra, no el nombre. */}
+                  {e.practico?.trayecto?.length ? (
+                    <Trayecto tramos={e.practico.trayecto} />
+                  ) : e.practico?.linea ? (
                     <div className="rounded-2xl border border-slate-200 bg-white p-3 mb-3">
                       <LineaTren clave={e.practico.linea} direccion={e.practico.direccion} />
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Lo práctico: lo que uno quiere saber delante del sitio.
                       Cada cosa con su icono, porque se leen de un vistazo y
