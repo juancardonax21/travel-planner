@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
-import { Plus, Pencil, Trash2, Map, Sparkles, Plane, Phone, CreditCard, BedDouble, Car, PlaneLanding, CalendarDays, NotebookPen, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, Footprints, FileCheck2, Banknote, ChevronRight, PlayCircle, Lightbulb, ListChecks, Camera, ShoppingBag } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Plus, Pencil, Trash2, Heart, MessageCircle, Map, Sparkles, Plane, Phone, CreditCard, BedDouble, Car, PlaneLanding, CalendarDays, CheckCircle2, AlertTriangle, Ticket, Shield, Users, Hash, MapPin, Globe, Wifi, Snowflake, ParkingSquare, Utensils, Dog, Droplets, LayoutGrid, List, Footprints, FileCheck2, Banknote, ChevronRight, PlayCircle, Lightbulb, ListChecks, Camera, ShoppingBag } from 'lucide-react'
 import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 import type { Trip, Event } from '@/types'
@@ -16,6 +16,8 @@ import Ilustracion, { seIlustra } from '@/components/itinerary/Ilustracion'
 import LineaTren from '@/components/itinerary/LineaTren'
 import Trayecto from '@/components/itinerary/Trayecto'
 import CampoCrece from '@/components/itinerary/CampoCrece'
+import Voces from '@/components/itinerary/Voces'
+import { useVoces, useYo } from '@/lib/voces'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import PlanGeneral from '@/components/itinerary/PlanGeneral'
 import { pasosDelDia, formateaPasos } from '@/lib/pasos'
@@ -66,6 +68,10 @@ const EMPTY: any = {
   accom_ac: false,
   accom_pets: false,
 }
+
+/* El día de hoy en el mismo formato que guardan los eventos (AAAA-MM-DD).
+   El truco del 'sv-SE' es que el sueco escribe la fecha así de serie. */
+const fechaDeHoy = () => new Date().toLocaleDateString('sv-SE')
 
 function safeHost(url: string) {
   try { return new URL(url).hostname.replace('www.', '') } catch { return 'Link' }
@@ -381,9 +387,19 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
   const [trip, setTrip] = useState<Trip | null>(null)
   const [events, setEvents] = useState<Event[]>([])
   const [tripMembers, setTripMembers] = useState<any[]>([])
-  const [dayNotes, setDayNotes] = useState<Record<string, string>>({})
-  // El ancla del día: lo que se va a recordar de esa jornada. Vive aparte de
-  // las notas, que son un bloc de recados.
+  /* Lo que dice la familia sobre cada cosa del plan. Los viajeros se toman de
+     las fichas que ya carga la página: quien firma es el viajero, no la
+     cuenta, porque aquí cuatro personas entran con dos cuentas. */
+  const { porEvento: vocesDe, hayTabla: hayVoces, alternaCorazon, añadeNota, borraVoz } = useVoces(id)
+  const viajeros = useMemo(
+    () => tripMembers.map((m: any) => ({ id: m.id, name: m.name })).filter(v => v.id && v.name),
+    [tripMembers])
+  const { yo, elige: eligeViajero } = useYo(id, viajeros)
+  /* El ancla del día: lo que se va a recordar de esa jornada.
+     La caja de «notas del día» que había al lado se ha ido: era un recuadro
+     vacío todos los días, y lo que se quiere decir se dice ahora sobre cada
+     cosa del plan, no sobre el día entero. La columna sigue en la base de
+     datos, sin tocar, por si algún día hace falta. */
   const [anclas, setAnclas] = useState<Record<string, string>>({})
   const [weather, setWeather] = useState<Record<string, WeatherDay>>({})
   const [selDay, setSelDay] = useState<string | null>(null)
@@ -449,17 +465,10 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
     }
     setTripMembers((tm || []).map((item: any) => item.family_member).filter(Boolean))
     setEvents(ev || [])
-    const notes: Record<string, string> = {}
     const anc: Record<string, string> = {}
-    ;(dn || []).forEach((n: any) => { notes[n.day] = n.content; if (n.ancla) anc[n.day] = n.ancla })
-    setDayNotes(notes)
+    ;(dn || []).forEach((n: any) => { if (n.ancla) anc[n.day] = n.ancla })
     setAnclas(anc)
     setLoading(false)
-  }
-
-  async function saveNote(day: string, content: string) {
-    setDayNotes(n => ({ ...n, [day]: content }))
-    await guardaDia(day, { content })
   }
 
   async function saveAncla(day: string, ancla: string) {
@@ -1300,6 +1309,21 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       className="flex items-center gap-1.5 text-xs text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1.5 rounded-xl"><Shield size={12} /> Seguro</a>}
                   </div>
 
+                  {/* Lo que dice la familia. Va al final de la ficha, después
+                      de todo lo que hay que saber: primero la cosa, luego lo
+                      que opinamos de ella. */}
+                  {hayVoces && viajeros.length > 0 && (
+                    <Voces
+                      voces={vocesDe[detalle.id] || []}
+                      viajeros={viajeros}
+                      yo={yo}
+                      elige={eligeViajero}
+                      yaPasado={detalle.day <= fechaDeHoy()}
+                      onCorazon={y => alternaCorazon(detalle.id, y)}
+                      onNota={(y, t) => añadeNota(detalle.id, y, t)}
+                      onBorrar={borraVoz} />
+                  )}
+
                   <div className="flex gap-2 pt-3 border-t border-slate-100">
                     <button onClick={() => { const ev = detalle; setDetalle(null); openEdit(ev) }}
                       className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-1.5">
@@ -1404,19 +1428,6 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                 ))}
               </div>
             )}
-            {(() => {
-              const p = pasosDelDia(dayEvents)
-              if (!p.pasos) return null
-              return (
-                <div className="flex items-center gap-2 mb-3 text-sm text-slate-500">
-                  <Footprints size={15} strokeWidth={1.8} className="text-slate-400" />
-                  <span><strong className="text-slate-700 font-semibold">~{formateaPasos(p.pasos)}</strong> pasos previstos</span>
-                  {p.kmAndando > 0 && (
-                    <span className="text-slate-400">· {p.kmAndando} km a pie en {p.tramos} {p.tramos === 1 ? 'tramo' : 'tramos'}</span>
-                  )}
-                </div>
-              )
-            })()}
             {dayW && (
               <div className="bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200 rounded-2xl p-3 mb-4 flex items-center gap-4 flex-wrap">
                 <span className="text-3xl">{weatherEmoji(dayW.icon)}</span>
@@ -1433,10 +1444,42 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
             )}
 
             {/* Sin titular de fecha: el día ya está dicho, y en grande, en la
-                tira de arriba. Repetirlo debajo solo gastaba una línea de
-                pantalla, que en el móvil es cara. */}
-            <div className="flex items-center justify-end mb-4">
-              <div className="flex gap-2">
+                tira de arriba. En su sitio van los pasos, que sí son de este
+                día y antes quedaban sueltos en una línea suya a media altura.
+                Con el icono en recuadro, igual que los de las tarjetas. */}
+            <div className="flex items-center justify-between gap-3 mb-4">
+              {(() => {
+                const p = pasosDelDia(dayEvents)
+                if (!p.pasos) return <span />
+                return (
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                      <Footprints size={17} strokeWidth={1.8} className="text-slate-500" />
+                    </span>
+                    <span className="min-w-0 leading-tight">
+                      {/* Sin la palabra «pasos»: las dos huellas de al lado ya
+                          lo dicen, y lo que se ahorra se lo queda el detalle
+                          de los kilómetros, que en el móvil no cabía. */}
+                      <span className="block text-base font-semibold text-slate-800 whitespace-nowrap">
+                        ~{formateaPasos(p.pasos)}
+                      </span>
+                      <span className="block text-[11px] sm:text-xs text-slate-400 whitespace-nowrap">
+                        {p.kmAndando > 0 ? (
+                          <>
+                            {p.kmAndando.toLocaleString('es-ES')} km a pie
+                            {/* El desglose en tramos solo donde cabe entero: en el
+                                móvil se cortaba a media palabra. */}
+                            <span className="hidden sm:inline">
+                              {` en ${p.tramos} ${p.tramos === 1 ? 'tramo' : 'tramos'}`}
+                            </span>
+                          </>
+                        ) : 'previstos'}
+                      </span>
+                    </span>
+                  </div>
+                )
+              })()}
+              <div className="flex gap-2 flex-shrink-0">
                 {eventsWithCoords.length > 0 && (
                   <a href={`https://www.google.com/maps/dir/${eventsWithCoords.map(e => `${e.lat},${e.lng}`).join('/')}`}
                     target="_blank" rel="noopener"
@@ -1459,18 +1502,6 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                 defaultValue={anclas[selDay] || ''}
                 key={'ancla-' + selDay}
                 onBlur={e => { if (e.target.value !== (anclas[selDay] || '')) saveAncla(selDay, e.target.value) }} />
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
-              <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1 flex items-center gap-1.5"><NotebookPen size={11} strokeWidth={2} /> Notas del día</div>
-              {/* La key, como en el ancla: sin ella el campo se quedaba con el
-                  texto del día anterior al cambiar de día, y al tocarlo lo
-                  guardaba en el día equivocado. */}
-              <CampoCrece className="w-full bg-transparent text-sm text-slate-700 focus:outline-none"
-                placeholder="Escribe una nota para este día..."
-                defaultValue={dayNotes[selDay] || ''}
-                key={'nota-' + selDay}
-                onBlur={e => { if (e.target.value !== (dayNotes[selDay] || '')) saveNote(selDay, e.target.value) }} />
             </div>
 
             {/* ── CHECKOUT CHIP ── */}
@@ -1657,6 +1688,30 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                               texto gana el ancho entero, que en el móvil es la
                               diferencia entre leerlo y adivinarlo. */}
                           <div className="flex items-center flex-wrap gap-1.5 mt-2.5">
+                            {/* De las voces, aquí solo el número: el hilo entero
+                                en la lista del día sería justo el desorden que
+                                acabamos de quitar. Se toca y se abre la ficha. */}
+                            {(() => {
+                              const vs = vocesDe[ev.id] || []
+                              const cor = vs.filter(v => v.tipo === 'corazon').length
+                              const com = vs.filter(v => v.tipo === 'nota').length
+                              if (!cor && !com) return null
+                              return (
+                                <button type="button" onClick={() => setDetalle(ev)}
+                                  className="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full bg-white border border-slate-200 hover:border-rose-300 transition-colors">
+                                  {cor > 0 && (
+                                    <span className="inline-flex items-center gap-1 text-rose-600">
+                                      <Heart size={11} strokeWidth={2} fill="currentColor" /> {cor}
+                                    </span>
+                                  )}
+                                  {com > 0 && (
+                                    <span className="inline-flex items-center gap-1 text-slate-500">
+                                      <MessageCircle size={11} strokeWidth={2} /> {com}
+                                    </span>
+                                  )}
+                                </button>
+                              )
+                            })()}
                             {e.fixed_time && (
                               <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200"
                                 title="Fecha u hora que no admite cambio">

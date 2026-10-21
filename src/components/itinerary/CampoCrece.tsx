@@ -22,6 +22,17 @@ export default function CampoCrece({
 
   useEffect(() => { ajusta() }, [props.defaultValue, props.value])
 
+  /* Y otra vez si cambia el ancho: al girar el móvil o al estrecharse la
+     ventana, el mismo texto ocupa más líneas y el alto medido se queda
+     corto, que es justo cuando se nota el recorte. */
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => ajusta())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   return (
     <textarea
       {...props}
