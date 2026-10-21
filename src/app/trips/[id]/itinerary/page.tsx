@@ -17,6 +17,7 @@ import LineaTren from '@/components/itinerary/LineaTren'
 import Trayecto from '@/components/itinerary/Trayecto'
 import CampoCrece from '@/components/itinerary/CampoCrece'
 import Voces from '@/components/itinerary/Voces'
+import BotonCompartir from '@/components/itinerary/BotonCompartir'
 import { useVoces, useYo } from '@/lib/voces'
 import DocumentScanner from '@/components/itinerary/DocumentScanner'
 import PlanGeneral from '@/components/itinerary/PlanGeneral'
@@ -1329,6 +1330,7 @@ export default function ItineraryPage({ params }: { params: { id: string } }) {
                       className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-1.5">
                       <Pencil size={14} /> Editar
                     </button>
+                    <BotonCompartir ev={detalle} />
                     <button onClick={() => setDetalle(null)} className="btn-secondary px-4">Cerrar</button>
                   </div>
                 </div>
