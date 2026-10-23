@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -9,6 +10,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+
+  // El callback del correo de recuperación devuelve aquí su motivo cuando falla.
+  // Se lee de la URL en vez de con useSearchParams para no envolver la página
+  // en un Suspense que no hace falta para nada más.
+  useEffect(() => {
+    const motivo = new URLSearchParams(window.location.search).get('error')
+    if (motivo) setError(motivo)
+  }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -46,6 +55,10 @@ export default function LoginPage() {
             className="btn-primary w-full py-3 text-base disabled:opacity-50">
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
+          <Link href="/recuperar"
+            className="block text-center text-sm text-slate-500 hover:text-slate-700">
+            ¿Has olvidado la contraseña?
+          </Link>
         </form>
       </div>
     </div>
